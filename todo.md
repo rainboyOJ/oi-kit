@@ -2,7 +2,7 @@
 
 1. ~~**复盘前置校验**：复盘应在 `main.cpp` 通过 `sample`/`duipai` 后才跑。当前 `oj-reference` 可在 `main.cpp` 未验证时就给代码+复盘，水分大。复盘步骤前先 `oj status`/`oj sample` 校验，未通过则跳过或提示先验证。~~ ✅ 已完成（`oj-reference.md` / `oj-student-coach` SKILL.md / `AGENTS.md` 均补述前置校验）
 
-2. **catalog 输出过大**：`--compact` 一次 6000+ 行 JSON，每题复盘都拉远程耗 token。可加 `rbook_match.py "<知识点>"` 工具：内部拉 catalog + 模糊打分，只返回每知识点 top-1 `{tag,title,url}`；或加本地 `.opencode/oj-tools/.cache/rbook-catalog-<date>.json` 缓存。
+2. ~~**catalog 输出过大**：`--compact` 一次 6000+ 行 JSON，每题复盘都拉远程耗 token。可加 `rbook_match.py "<知识点>"` 工具：内部拉 catalog + 模糊打分，只返回每知识点 top-1 `{tag,title,url}`；或加本地 `.opencode/oj-tools/.cache/rbook-catalog-<date>.json` 缓存。~~ ✅ 已完成（新增 `rbook_match.py`：catalog 优先 + 搜索降级 + 天级缓存，命中缓存时 stderr 通知并给出 `--no-cache` 更新方式；`oj-reference.md` / `oj-student-coach` SKILL.md / `AGENTS.md` / `README.md` / `rbook-http` SKILL.md 均改引 `rbook_match.py`；缓存目录加入 `.gitignore`）
 
 3. **知识点缺校验**：AI 容易把"DFS"也塞进去但其实 rbook 没该专文、或写"状压"却没真用到。建议约束：每个知识点必须附一句"本题哪里用到该知识点"。
 

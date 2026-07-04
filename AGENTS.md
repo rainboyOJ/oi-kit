@@ -48,7 +48,7 @@ Allowed by default:
 进入复盘前必须先 `oj sample`（有 `brute.cpp`+`gen.cpp` 时建议 `oj duipai`）校验 `main.cpp`，未通过则跳过复盘并提示学生先修复代码。
 
 - 从 `problem.md` + `main.cpp` 提取本题涉及的知识点列表；
-- 调 `skills/rbook-http/scripts/rbook_catalog.py --scope visible` 在 rbook 目录中按知识点匹配章节；未命中再降级 `rbook_search.py "<知识点>"` 段落搜索；
+- 调 `skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ...`：catalog 优先 + 搜索降级 + 天级缓存，命中缓存时通知用户并给出 `--no-cache` 更新方式；
 - 每个知识点 top-1 篇文章，不贴模板代码正文；
 - 把结果写入题目目录的 `index.md`：
   - `frontmatter.tags` 放知识点名称；

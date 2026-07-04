@@ -50,14 +50,19 @@ Make clear that this is a reference, not a replacement for the student's own att
 ### 复盘流程
 
 1. 读取 `problem.md` 与已完成的 `main.cpp`，提取本题用到的知识点列表（如 `["数位DP", "记忆化搜索"]`）。
-2. 调用 `python skills/rbook-http/scripts/rbook_catalog.py --scope visible --compact --pretty` 拿到 rbook 目录。
-3. 对每个知识点，在目录的 `title` / `excerpt` / `headings` / `tags` 中匹配最相关的一篇文章。命中则记录其 `citation.title` 和 `citation.url`。
-4. 若 catalog 未命中该知识点，降级调用 `python skills/rbook-http/scripts/rbook_search.py "<知识点>" --limit 5 --no-text --pretty`，从片段搜索结果里选 top-1 章节，取其 `path`/`title`。
-5. 缺省 `BASE_URL` 是线上 `https://rbook2.roj.ac.cn`，无需额外配置即可使用；按 skill 文档验证健康状态后再继续。
-6. 每个知识点只取 top-1 篇，不贴模板代码正文。
-7. 更新 `index.md`：
+2. 调用一键匹配脚本（catalog 优先 + 搜索降级，带天级缓存，自动通知使用的是缓存还是已更新）：
+
+   ```bash
+   python skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ... --pretty
+   ```
+
+   - 脚本内部按天缓存 catalog 到 `.opencode/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时会在 stderr 提示"使用缓存……如需最新数据：删除该文件，或重新运行并加 `--no-cache` 更新缓存"。
+   - rbook 内容更新后或缓存过期时，加 `--no-cache` 强制重新拉取并刷新缓存。
+   - 每个知识点取 top-1 篇，输出形如 `{tag, title, url, score, source}`（`source` 为 `catalog` / `search` / `none`）。
+   - 缺省 `BASE_URL` 是线上 `https://rbook2.roj.ac.cn`，无需额外配置即可使用。
+3. 更新 `index.md`：
    - frontmatter：`tags` 填知识点名称，`rbook` 填数组，每项形如 `{tag: <知识点>, title: <文章标题>, url: <文章相对 url>}`。
    - 正文 `### 知识点` 小节：逐个知识点写一两句思想，并以 `[<文章标题>](<BASE_URL + url>)` 形式给出可点击引用。
-8. 如 rbook 中确无对应章节，如实在该条知识点下注明"rbook 暂无对应章节"，不强行硬凑。
+4. `source` 为 `none` 的知识点，如实在该条下注明"rbook 暂无对应章节"，不强行硬凑。
 
 复盘是学习闭环的最后一环，必须真实反映 rbook 覆盖范围。

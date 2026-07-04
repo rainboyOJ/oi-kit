@@ -92,14 +92,20 @@ oj duipai problems/luogu/1001 100
 
 1. 前置校验：`oj status` + `oj sample`（建议 `oj duipai`）。未通过则跳过复盘并提示先修代码。
 2. 从 `problem.md` + `main.cpp` 提取知识点列表（如 `["组合枚举", "素数判定"]`）。
-3. 先调 `rbook_catalog.py --scope visible` 在目录里按 `title`/`description`/`headings`/`tags` 匹配章节。
-4. catalog 未命中再降级 `rbook_search.py "<知识点>"` 段落搜索兜底。
-5. 每个知识点只取 top-1 篇，不贴模板代码正文。
-6. 写入题目目录的 `index.md`：
+3. 一键匹配：
+
+   ```bash
+   python skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
+   ```
+
+   - 内部 catalog 优先 + 搜索降级，每个知识点取 top-1 篇，输出 `{tag, title, url, score, source}`。
+   - catalog 走天级缓存 `.opencode/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时 stderr 会提示「使用缓存……如需最新数据，删除该文件或加 `--no-cache` 更新缓存」。
+   - rbook 内容更新后或当天缓存过期时，加 `--no-cache` 强制重拉并刷新缓存。
+4. 写入题目目录的 `index.md`：
    - frontmatter `tags` 填知识点名称；
    - frontmatter `rbook` 填数组，每项 `{tag, title, url}`；
    - 正文 `### 知识点` 小节逐个知识点写一两句思想，并附 `[<文章标题>](https://rbook2.roj.ac.cn<url>)` 可点击引用。
-7. rbook 中确无对应章节时如实标注，不硬凑。
+5. `source` 为 `none` 时如实标注"rbook 暂无对应章节"，不硬凑。
 
 rbook 默认走线上 `https://rbook2.roj.ac.cn`。本地有 rbook 服务时设 `RBOOK_BASE_URL=http://127.0.0.1:3000` 或脚本传 `--local` 覆盖。
 

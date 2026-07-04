@@ -63,6 +63,27 @@ python skills/rbook-http/scripts/rbook_search.py "数位DP 状态 记忆化" --l
 - `--no-text`：只返回标题、路径、分数等元数据。
 - `--raw`：输出 API 原始响应。
 
+### 按知识点一键匹配（复盘推荐）
+
+OJ 复盘时最常用：对一个或多个知识点，catalog 优先 + 搜索降级，每个取 top-1。
+
+```bash
+python skills/rbook-http/scripts/rbook_match.py "数位DP" "记忆化搜索" --pretty
+```
+
+输出数组，每项 `{tag, title, url, score, source}`，`source` 为 `catalog` / `search` / `none`。
+
+带天级缓存到 `.opencode/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`：
+
+- 命中缓存时 stderr 提示"使用缓存……如需最新数据：删除该文件，或重新运行并加 `--no-cache` 更新缓存"。
+- rbook 内容更新后或缓存过期时，加 `--no-cache` 强制重新拉取并刷新缓存。
+
+常用参数：
+
+- `--text-length N`：控制每条片段正文长度。
+- `--no-text`：只返回标题、路径、分数等元数据。
+- `--raw`：输出 API 原始响应。
+
 ### 读取文章上下文
 
 ```bash
