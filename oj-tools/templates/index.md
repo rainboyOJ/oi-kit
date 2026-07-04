@@ -28,7 +28,7 @@ source: {source}
 ### 知识点
 
 <!-- 复盘时由 /oj-reference 触发填写：逐个知识点写一句思想，并附 rbook 章节链接。 -->
-<!-- frontmatter 的 tags 填知识点名称，rbook 数组每项形如 {tag, title, url}。 -->
+<!-- frontmatter 的 tags 填知识点名称，rbook 数组每项形如 {{tag, title, url}}。 -->
 
 ### 代码
 
