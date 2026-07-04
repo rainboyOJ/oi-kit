@@ -44,7 +44,8 @@ Allowed by default:
 
 ## Recap Stage: Knowledge and rbook References
 
-复盘闭环在 `/oj-reference` 给出参考代码后追加触发，使用 `skills/rbook-http` skill：
+复盘闭环在 `/oj-reference` 给出参考代码后追加触发，使用 `skills/rbook-http` skill。
+进入复盘前必须先 `oj sample`（有 `brute.cpp`+`gen.cpp` 时建议 `oj duipai`）校验 `main.cpp`，未通过则跳过复盘并提示学生先修复代码。
 
 - 从 `problem.md` + `main.cpp` 提取本题涉及的知识点列表；
 - 调 `skills/rbook-http/scripts/rbook_catalog.py --scope visible` 在 rbook 目录中按知识点匹配章节；未命中再降级 `rbook_search.py "<知识点>"` 段落搜索；

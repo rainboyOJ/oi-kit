@@ -25,7 +25,29 @@ Make clear that this is a reference, not a replacement for the student's own att
 
 代码给出之后，必须追加复盘阶段，把本题用到的知识点匹配到 rbook 章节，填入题目目录下的 `index.md`。使用 `rbook-http` skill 完成本步。
 
-流程：
+### 前置校验（必须通过才进入复盘）
+
+复盘不得在 `main.cpp` 未经样例验证时进行，否则复盘会基于未验证的代码"吹"知识点，水分大、误导学生。流程开始前先执行：
+
+```bash
+.opencode/oj-tools/bin/oj status <problem_dir>
+.opencode/oj-tools/bin/oj sample <problem_dir>
+```
+
+判定规则：
+
+- `problem.md` 或 `main.cpp` 缺失：不进入复盘，提示学生先抓题/写代码。
+- `oj sample` 任意样例失败：不进入复盘，明确告知哪条样例失败、要求学生先修复 `main.cpp` 通过样例（可选 `oj duipai` 进一步对拍）。
+- 有 `brute.cpp` 和 `gen.cpp` 且学生希望严格验证：建议先 `oj duipai 100`，出现反例则不进入复盘，先修代码。
+
+只有样例全部通过（且若跑了 duipai 则对拍无反例）后，才继续下面的复盘流程。跳过复盘时给学生的提示应为：
+
+```text
+复盘暂未进行：main.cpp 尚未通过样例/对拍。
+请先修复并运行 oj sample（与 oj duipai）通过后，再重新触发 /oj-reference 完成复盘。
+```
+
+### 复盘流程
 
 1. 读取 `problem.md` 与已完成的 `main.cpp`，提取本题用到的知识点列表（如 `["数位DP", "记忆化搜索"]`）。
 2. 调用 `python skills/rbook-http/scripts/rbook_catalog.py --scope visible --compact --pretty` 拿到 rbook 目录。

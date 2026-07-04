@@ -23,6 +23,7 @@ Do not skip directly from problem statement to full optimized code.
 由 `oj-reference` 命令在给出参考代码后追加触发，使用 `rbook-http` skill：
 先 `rbook_catalog.py` 拿目录按知识点匹配，未命中再降级 `rbook_search.py`，每知识点 top-1 篇，不贴模板代码。
 默认 `BASE_URL=https://rbook2.roj.ac.cn`（线上）。详见 `oj-reference` 命令中的复盘流程段落。
+复盘前必须先通过 `oj sample`（可选 `oj duipai`）校验 `main.cpp`，未通过则跳过复盘并提示学生先修复代码。
 
 ## Answering Rules
 

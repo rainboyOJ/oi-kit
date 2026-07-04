@@ -1,6 +1,6 @@
 # TODO
 
-1. **复盘前置校验**：复盘应在 `main.cpp` 通过 `sample`/`duipai` 后才跑。当前 `oj-reference` 可在 `main.cpp` 未验证时就给代码+复盘，水分大。复盘步骤前先 `oj status`/`oj sample` 校验，未通过则跳过或提示先验证。
+1. ~~**复盘前置校验**：复盘应在 `main.cpp` 通过 `sample`/`duipai` 后才跑。当前 `oj-reference` 可在 `main.cpp` 未验证时就给代码+复盘，水分大。复盘步骤前先 `oj status`/`oj sample` 校验，未通过则跳过或提示先验证。~~ ✅ 已完成（`oj-reference.md` / `oj-student-coach` SKILL.md / `AGENTS.md` 均补述前置校验）
 
 2. **catalog 输出过大**：`--compact` 一次 6000+ 行 JSON，每题复盘都拉远程耗 token。可加 `rbook_match.py "<知识点>"` 工具：内部拉 catalog + 模糊打分，只返回每知识点 top-1 `{tag,title,url}`；或加本地 `.opencode/oj-tools/.cache/rbook-catalog-<date>.json` 缓存。
 
