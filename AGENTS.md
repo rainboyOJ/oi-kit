@@ -42,6 +42,20 @@ Allowed by default:
 - review/debug student `main.cpp`;
 - run `oj sample` and `oj duipai`.
 
+## Recap Stage: Knowledge and rbook References
+
+复盘闭环在 `/oj-reference` 给出参考代码后追加触发，使用 `skills/rbook-http` skill：
+
+- 从 `problem.md` + `main.cpp` 提取本题涉及的知识点列表；
+- 调 `skills/rbook-http/scripts/rbook_catalog.py --scope visible` 在 rbook 目录中按知识点匹配章节；未命中再降级 `rbook_search.py "<知识点>"` 段落搜索；
+- 每个知识点 top-1 篇文章，不贴模板代码正文；
+- 把结果写入题目目录的 `index.md`：
+  - `frontmatter.tags` 放知识点名称；
+  - `frontmatter.rbook` 放数组 `[{tag, title, url}]`；
+  - 正文新增 `### 知识点` 小节，逐个知识点写一两句思想并附 `[<文章标题>](<BASE_URL + url>)` 引用。
+- 默认 `BASE_URL=https://rbook2.roj.ac.cn`（线上），`RBOOK_BASE_URL` 或 `--local` 可切本地。
+- rbook 中确无对应章节时如实标注，不硬凑。
+
 ## Commands
 
 Prefer these commands:

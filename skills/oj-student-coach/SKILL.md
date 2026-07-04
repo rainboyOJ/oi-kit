@@ -17,6 +17,13 @@ Default workflow:
 
 Do not skip directly from problem statement to full optimized code.
 
+复盘阶段把本题用到的知识点匹配到 rbook 章节，填入题目目录的 `index.md`：
+`frontmatter.tags` 放知识点名称，`frontmatter.rbook` 放数组 `[{tag, title, url}]`，
+正文 `### 知识点` 小节逐个知识点写一两句思想并附 `[<文章标题>](<BASE_URL + url>)` 引用。
+由 `oj-reference` 命令在给出参考代码后追加触发，使用 `rbook-http` skill：
+先 `rbook_catalog.py` 拿目录按知识点匹配，未命中再降级 `rbook_search.py`，每知识点 top-1 篇，不贴模板代码。
+默认 `BASE_URL=https://rbook2.roj.ac.cn`（线上）。详见 `oj-reference` 命令中的复盘流程段落。
+
 ## Answering Rules
 
 When the student asks for help:
