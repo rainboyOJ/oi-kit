@@ -1,218 +1,222 @@
 #!/usr/bin/env python3
-"""按知识点匹配 rbook 章节。
+"""按知识点匹配 rbook 章节（oi-kit 复盘专用）。
 
-对一个或多个知识点，先在 rbook 目录（catalog）里做模糊打分，每个知识点取 top-1。
-catalog 未命中时降级到片段搜索（chunks/search）兜底，仍取 top-1。
-最终输出 JSON 数组，每项形如：
+输入一个或多个知识点，在 `/api/catalog` 的条目上做加权打分（id / title / tags /
+description），每个知识点取 top-1，输出 JSON 数组：
+
     {"tag": <知识点>, "title": <文章标题>, "url": <文章相对 url>,
-     "score": <打分>, "source": "catalog" | "search" | "none"}
+     "score": <打分>, "source": "catalog" | "none"}
 
-为减少远程拉取，catalog 默认按天缓存到项目目录下
-    .pi/oj-tools/.cache/rbook-catalog-YYYY-MM-DD.json
-命中缓存时会在 stderr 通知用户，并给出更新方法。
+`source` 为 `none` 表示 rbook 目录里确实没有对应章节，调用方应如实标注，
+不要硬凑。注意区分两种“没结果”：
+
+- 知识点未命中 → `source: none`，正常退出；
+- catalog 拉取失败（服务不可用、路由变更等）→ 报错退出（exit 2），
+  因为此时无法判断 rbook 是否真的没有该章节。
+
+打分与模糊兜底基于目录元数据，不做全文检索：线上 `/api/chunks/search`
+与 `/api/ai/*` 已下线，新版 API 只有目录级检索（`rbook.py find`）。
 """
+
 from __future__ import annotations
 
 import argparse
-import datetime as dt
-import json
+import difflib
+import re
 import sys
-from pathlib import Path
 from typing import Any
 
-from rbook_client import (
-    ONLINE_BASE_URL,
-    add_common_args,
-    compact_article,
-    dump_json,
-    get_json,
-    main_guard,
-    resolve_base_url,
-)
+import rbook
 
 
-def find_project_root(start: Path | None = None) -> Path:
-    cur = (start or Path.cwd()).resolve()
-    for path in [cur, *cur.parents]:
-        if (path / "problems").is_dir():
-            return path
-        if (path / ".pi").is_dir():
-            return path
-        if (path / "oj-tools").is_dir():
-            return path
-    return cur
+def normalize(text: Any) -> str:
+    """小写、压平空白，便于中文/英文知识点比较。"""
+    return re.sub(r"\s+", " ", str(text or "")).strip().casefold()
 
 
-def cache_path(root: Path, scope: str, date: dt.date) -> Path:
-    return root / ".pi" / "oj-tools" / ".cache" / f"rbook-catalog-{scope}-{date.isoformat()}.json"
+def fuzzy_ratio(token: str, candidate: str) -> float:
+    if not token or not candidate:
+        return 0.0
+    return difflib.SequenceMatcher(None, token, candidate).ratio()
 
 
-def load_cache(path: Path) -> dict[str, Any] | None:
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(data, dict) and "articles" in data:
-            return data
-    except Exception:
-        return None
-    return None
+def token_score(item: dict[str, Any], token: str) -> float:
+    """单个关键词对单个目录条目的得分；0 表示完全没命中。
+
+    只做单向包含（关键词 ⊆ 条目的 id/title/tags/description/path），
+    反过来“条目短标签 ⊆ 关键词”会造成大量假阳性（例如“量子退火算法”
+    因为含“算法”二字而命中无关文章），近似写法交给模糊兜底处理。
+    """
+    item_id = normalize(item.get("id"))
+    title = normalize(item.get("title"))
+    menu_title = normalize(item.get("menuTitle"))
+    tags = [normalize(tag) for tag in item.get("tags") or []]
+    description = normalize(item.get("description"))
+    path = normalize(item.get("path"))
+
+    scores: list[float] = []
+
+    if token == item_id:
+        scores.append(500.0)
+    elif token in item_id:
+        scores.append(400.0)
+
+    if token == title:
+        scores.append(450.0)
+    elif token in title:
+        scores.append(300.0)
+
+    if menu_title:
+        if token == menu_title:
+            scores.append(200.0)
+        elif token in menu_title:
+            scores.append(120.0)
+
+    for tag in tags:
+        if token == tag:
+            scores.append(220.0)
+            break
+        if token in tag:
+            scores.append(120.0)
+            break
+
+    if token in description:
+        scores.append(60.0)
+
+    if token in path:
+        scores.append(40.0)
+
+    if scores:
+        return max(scores)
+
+    # 模糊兜底：处理“组合枚句”这类错字/近似写法。
+    # 只在长度相近（差 ≤ 1）时启用，否则短 tag（如“二分”）会与长知识点
+    # （如“二分答案”）产生高相似度误命中；单字/双字关键词也不做模糊。
+    if len(token) < 3:
+        return 0.0
+    best = 0.0
+    for candidate in [title, item_id, menu_title, *tags]:
+        if not candidate or abs(len(candidate) - len(token)) > 1:
+            continue
+        ratio = fuzzy_ratio(token, candidate)
+        if ratio > best:
+            best = ratio
+    if best >= 0.7:
+        return round(30.0 * best, 2)
+    return 0.0
 
 
-def save_cache(path: Path, data: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+def item_score(item: dict[str, Any], keyword: str) -> float:
+    """知识点整体得分。
+
+    按空白切成若干关键词，全命中时求和；只命中一部分时按命中比例打折
+    （软 AND）。这样“数位DP 记忆化搜索”这种把两个词写在一起的写法仍能
+    命中《数位DP》，而完全不命中的知识点依然返回 0。
+    """
+    tokens = [token for token in normalize(keyword).split(" ") if token]
+    if not tokens:
+        return 0.0
+    hits = [token_score(item, token) for token in tokens]
+    matched = [score for score in hits if score > 0.0]
+    if not matched:
+        return 0.0
+    total = sum(matched)
+    if len(matched) < len(tokens):
+        total *= len(matched) / len(tokens)
+    return total
 
 
-def fetch_catalog(base_url: str, scope: str, timeout: float) -> dict[str, Any]:
-    data = get_json(base_url, "/api/ai/catalog", {"scope": scope}, timeout=timeout)
-    articles = [compact_article(item) for item in data.get("articles", [])]
-    return {
-        "scope": data.get("scope", scope),
-        "generatedAt": data.get("generatedAt"),
-        "articles": articles,
-    }
+def match_one(
+    items: list[dict[str, Any]],
+    keyword: str,
+    min_score: float,
+    explain: bool = False,
+) -> dict[str, Any]:
+    best_item: dict[str, Any] | None = None
+    best_score = 0.0
+    for item in items:
+        score = item_score(item, keyword)
+        if score > best_score:
+            best_score = score
+            best_item = item
 
-
-def get_catalog(args: argparse.Namespace, base_url: str) -> tuple[dict[str, Any], str]:
-    """返回 (catalog_dict, 来源标签)。来源: 'cache' | 'cache-refreshed' | 'remote'."""
-    root = find_project_root()
-    today = dt.date.today()
-    cpath = cache_path(root, args.scope, today)
-    use_cache_read = not args.no_cache
-
-    if use_cache_read:
-        cached = load_cache(cpath)
-        if cached is not None:
+    if best_item is None or best_score < min_score:
+        if explain:
             print(
-                f"[cache] 使用缓存 {cpath}\n"
-                f"[cache] 如需最新数据：删除该文件，或重新运行并加 --no-cache 更新缓存。",
+                f"[explain] 「{keyword}」未达阈值 {min_score}（最高分 {round(best_score, 2)}）",
                 file=sys.stderr,
             )
-            return cached, "cache"
+        return {"tag": keyword, "title": None, "url": None, "score": 0.0, "source": "none"}
 
-    data = fetch_catalog(base_url, args.scope, args.timeout)
-    # 无论 --no-cache 与否，都写回缓存，避免下一次又重拉。
-    save_cache(cpath, data)
-    print(f"[cache] 已更新缓存 {cpath}", file=sys.stderr)
-    return data, "cache-refreshed"
+    if explain:
+        tokens = [token for token in normalize(keyword).split(" ") if token]
+        detail = ", ".join(
+            f"{token}={round(token_score(best_item, token), 2)}" for token in tokens
+        )
+        print(
+            f"[explain] 「{keyword}」-> id={best_item.get('id')} "
+            f"title={best_item.get('title')} score={round(best_score, 2)} ({detail})",
+            file=sys.stderr,
+        )
 
-
-def score_article(article: dict[str, Any], kw: str) -> float:
-    """简单加权打分：标题命中权重最高，其次 tags/categories，再 description，最后 headings。"""
-    if not kw:
-        return 0.0
-    kw_l = kw.lower()
-    title = (article.get("title") or "").lower()
-    score = 0.0
-    if kw_l == title:
-        score += 100.0
-    elif kw_l in title:
-        score += 60.0
-    elif title and title in kw_l:
-        score += 30.0
-
-    for tag in article.get("tags", []) or []:
-        if kw_l == (tag or "").lower():
-            score += 40.0
-            break
-        if kw_l in (tag or "").lower():
-            score += 25.0
-            break
-
-    for cat in article.get("categories", []) or []:
-        if kw_l == (cat or "").lower():
-            score += 30.0
-            break
-        if kw_l in (cat or "").lower():
-            score += 15.0
-            break
-
-    desc = (article.get("description") or "").lower()
-    if kw_l in desc:
-        score += 8.0
-
-    for h in article.get("headings", []) or []:
-        text = (h.get("text") if isinstance(h, dict) else str(h)) or ""
-        if kw_l in text.lower():
-            score += 5.0
-            break
-    return score
-
-
-def match_in_catalog(catalog: dict[str, Any], kw: str, min_score: float) -> dict[str, Any] | None:
-    best: dict[str, Any] | None = None
-    best_score = 0.0
-    for art in catalog.get("articles", []) or []:
-        s = score_article(art, kw)
-        if s > best_score:
-            best_score = s
-            best = art
-    if best is not None and best_score >= min_score:
-        citation = best.get("citation") or {}
-        return {
-            "tag": kw,
-            "title": best.get("title") or citation.get("title"),
-            "url": best.get("url") or citation.get("url"),
-            "score": round(best_score, 2),
-            "source": "catalog",
-        }
-    return None
-
-
-def fallback_search(base_url: str, kw: str, timeout: float, limit: int) -> dict[str, Any] | None:
-    data = get_json(
-        base_url,
-        "/api/chunks/search",
-        {"q": kw, "limit": limit, "textLength": 0, "includeText": False},
-        timeout=timeout,
-    )
-    results = data.get("results", []) or []
-    if not results:
-        return None
-    top = results[0]
     return {
-        "tag": kw,
-        "title": top.get("title"),
-        "url": top.get("url"),
-        "score": round(float(top.get("score") or 0.0), 2),
-        "source": "search",
+        "tag": keyword,
+        "title": best_item.get("title") or best_item.get("menuTitle") or best_item.get("id"),
+        "url": best_item.get("url"),
+        "score": round(best_score, 2),
+        "source": "catalog",
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="按知识点匹配 rbook 章节，目录优先、搜索兜底，带天级缓存")
-    add_common_args(parser)
+def fetch_catalog(base_url: str, include_hidden: bool) -> list[dict[str, Any]]:
+    params = {"compact": "true"}
+    if include_hidden:
+        params["includeHidden"] = "true"
+    payload = rbook.request_json(base_url, "/api/catalog", params)
+    items = payload.get("items")
+    if not isinstance(items, list):
+        raise rbook.RbookClientError("INVALID_RESPONSE", "catalog 响应缺少 items 数组")
+    return items
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="按知识点匹配 rbook 章节，每个知识点取 top-1（catalog 打分 + 模糊兜底）",
+    )
     parser.add_argument("keywords", nargs="+", help="一个或多个知识点，每个取 top-1")
-    parser.add_argument("--scope", choices=["visible", "all"], default="visible", help="catalog 范围")
-    parser.add_argument("--no-cache", action="store_true", help="忽略并刷新缓存，重新拉取 catalog")
-    parser.add_argument("--min-score", type=float, default=10.0, help="catalog 命中阈值，低于此分判为未命中")
-    parser.add_argument("--search-limit", type=int, default=5, help="降级搜索时取前若干条再选 top-1")
-    args = parser.parse_args()
+    parser.add_argument("--baseurl", help="API 地址，默认读 RBOOK_BASE_URL，否则用线上地址")
+    parser.add_argument("--include-hidden", action="store_true", help="包含非 visible 的目录文章")
+    parser.add_argument("--min-score", type=float, default=10.0, help="命中阈值，低于此分判为未命中")
+    parser.add_argument("--explain", action="store_true", help="把每个知识点的命中/未命中原因打到 stderr")
+    parser.add_argument("--pretty", action="store_true", help="输出缩进 JSON")
+    return parser
 
-    base_url = resolve_base_url(args)
-    catalog, _source = get_catalog(args, base_url)
 
-    results: list[dict[str, Any]] = []
-    for kw in args.keywords:
-        hit = match_in_catalog(catalog, kw, args.min_score)
-        if hit is not None:
-            results.append(hit)
-            continue
-        # 降级搜索
-        try:
-            s_hit = fallback_search(base_url, kw, args.timeout, args.search_limit)
-        except Exception as exc:
-            print(f"[warn] 知识点「{kw}」降级搜索失败：{exc}", file=sys.stderr)
-            s_hit = None
-        if s_hit is not None:
-            results.append(s_hit)
-        else:
-            results.append({"tag": kw, "title": None, "url": None, "score": 0.0, "source": "none"})
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    base_url = rbook.resolve_baseurl(args.baseurl)
 
-    dump_json(results, pretty=args.pretty)
+    try:
+        items = fetch_catalog(base_url, args.include_hidden)
+    except rbook.RbookClientError as error:
+        rbook.print_error(error, json_output=True)
+        print(
+            "[hint] catalog 拉取失败时无法判断 rbook 是否真的没有该章节，"
+            "请不要据此写“rbook 暂无对应章节”；先确认服务可用或改用本地服务。",
+            file=sys.stderr,
+        )
+        return 2
+
+    results = []
+    for keyword in args.keywords:
+        hit = match_one(items, keyword, args.min_score, explain=args.explain)
+        results.append(hit)
+        if hit["source"] == "none":
+            print(f"[warn] 知识点「{keyword}」在 rbook 目录中未命中（source=none）", file=sys.stderr)
+
+    rbook.print_json(results, pretty=args.pretty)
     return 0
 
 
 if __name__ == "__main__":
-    main_guard(main)
+    raise SystemExit(main())

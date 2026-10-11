@@ -16,6 +16,10 @@
 │   │   ├── oj-student-coach/     # 学习流程教练 skill
 │   │   ├── oj-cpp-rbook-style/   # rbook 风格 C++ 规范 skill
 │   │   └── rbook-http/           # rbook 知识库 HTTP 检索 skill
+│   │       ├── SKILL.md          #   API/CLI 用法与错误码
+│   │       └── scripts/
+│   │           ├── rbook.py      #   vendor 自 rbook 仓库的官方客户端
+│   │           └── rbook_match.py#   复盘用知识点匹配脚本（本项目）
 │   └── oj-tools/
 │       ├── bin/oj            # 自包含 CLI 入口
 │       ├── scripts/oj_cli.py # CLI 实现
@@ -145,19 +149,33 @@ OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory
 3. 一键匹配：
 
    ```bash
-   python .pi/skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
+   python3 .pi/skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
    ```
 
-   - 内部 catalog 优先 + 搜索降级，每个知识点取 top-1 篇，输出 `{tag, title, url, score, source}`。
-   - catalog 走天级缓存 `.pi/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时 stderr 会提示「使用缓存……如需最新数据，删除该文件或加 `--no-cache` 更新缓存」。
-   - rbook 内容更新后或当天缓存过期时，加 `--no-cache` 强制重拉并刷新缓存。
+   - 每个知识点单独一个参数；在 `/api/catalog` 上加权打分（id / title / tags / description，含错字模糊兜底），每个知识点取 top-1，输出 `{tag, title, url, score, source}`。
+   - `source` 只有 `catalog` 和 `none`：旧版的全文搜索降级已随 `/api/chunks/search` 下线而移除。
+   - 命中可疑时加 `--explain` 看命中原因，`--min-score` 调阈值，`--include-hidden` 纳入非 visible 文章。
 4. 写入题目目录的 `index.md`：
    - frontmatter `tags` 填知识点名称；
    - frontmatter `rbook` 填数组，每项 `{tag, title, url}`；
    - 正文 `### 知识点` 小节逐个知识点写一两句思想，并附 `[<文章标题>](https://rbook2.roj.ac.cn<url>)` 可点击引用。
 5. `source` 为 `none` 时如实标注"rbook 暂无对应章节"，不硬凑。
+   注意区分：**`none` 是 rbook 真的没该章节**；而脚本 exit 2 是 catalog 拉取失败（服务不可用或路由变更），
+   此时不能写"暂无对应章节"，先跑 `python3 .pi/skills/rbook-http/scripts/rbook.py health` 确认服务。
 
-rbook 默认走线上 `https://rbook2.roj.ac.cn`。本地有 rbook 服务时设 `RBOOK_BASE_URL=http://127.0.0.1:3000` 或脚本传 `--local` 覆盖。
+rbook 默认走线上 `https://rbook2.roj.ac.cn`。本地有 rbook 服务时设 `RBOOK_BASE_URL=http://127.0.0.1:3000`
+或给脚本传 `--baseurl` 覆盖。
+
+### rbook 客户端与 API 版本
+
+`.pi/skills/rbook-http/scripts/rbook.py` 是 rbook 仓库 `scripts/rbook.py` 的**原样 vendor**
+（只用 Python 标准库，不依赖 rbook 仓库存在），提供 `health` / `site` / `catalog` / `find` /
+`pages` / `codes` / `tags` 子命令；`rbook_match.py` 是本项目为复盘写的打分辅助脚本。
+
+服务端 API 已从旧的 `/api/ai/*` + `/api/chunks/search` 统一为
+`/api/health`、`/api/help`、`/api/site`、`/api/catalog`、`/api/pages`、`/api/codes`、`/api/tags`。
+上游客户端更新后的再同步方式与当前 vendor 的 commit / sha256 记在
+`.pi/skills/rbook-http/SKILL.md`。
 
 ## 示例：跑一遍 P1036
 

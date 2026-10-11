@@ -85,7 +85,6 @@ opencode.json          # OpenCode 遗留配置
 package.json / package-lock.json / bun.lock   # 本地插件开发产物
 .gitignore             # 源端 git 忽略规则
 oj-tools/.build/       # 构建缓存
-oj-tools/.cache/       # rbook catalog 天级缓存
 **/__pycache__/        # python 字节码缓存
 problems/              # 学生工作产出
 ```
@@ -114,6 +113,13 @@ problems/              # 学生工作产出
 3. **确认资源已加载**：
    - 输入 `/` 应能看到 `/oj-new`、`/oj-fetch`、`/oj-status`、`/oj-run`、`/oj-sample`、`/oj-duipai`、`/oj-hint`、`/oj-brute`、`/oj-gen`、`/oj-judge`、`/oj-review`、`/oj-reference`、`/oj-help`；
    - `oj-student-coach`、`oj-cpp-rbook-style`、`rbook-http` 三个 skill 出现在可用 skill 列表中（也可用 `/skill:oj-student-coach` 强制加载）。
+
+   顺带验证 rbook 客户端（需网络，可选）：
+   ```bash
+   python3 "$DST"/skills/rbook-http/scripts/rbook.py health
+   ```
+   应输出 `ok true` 与 pages/codes 计数；若报 `API_ROUTE_NOT_FOUND`，说明服务端 API 又变了，
+   需按 `.pi/skills/rbook-http/SKILL.md` 的再同步流程更新 vendor 的 `rbook.py`。
 
 4. **非交互自查（可用于 CI 或脚本验证）**：
    ```bash

@@ -21,7 +21,11 @@ Do not skip directly from problem statement to full optimized code.
 `frontmatter.tags` 放知识点名称，`frontmatter.rbook` 放数组 `[{tag, title, url}]`，
 正文 `### 知识点` 小节逐个知识点写一两句思想并附 `[<文章标题>](<BASE_URL + url>)` 引用。
 由 `oj-reference` 命令在给出参考代码后追加触发，使用 `rbook-http` skill：
-调 `rbook_match.py "知识点1" "知识点2" ...`（catalog 优先 + 搜索降级 + 天级缓存，命中缓存时通知用户并给出 `--no-cache` 更新方式），每知识点 top-1 篇，不贴模板代码。
+调 `python3 .pi/skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ...`（每个知识点单独一个参数；
+在 `/api/catalog` 上加权打分 + 错字模糊兜底），每知识点 top-1 篇，不贴模板代码。
+输出 `{tag, title, url, score, source}`，`source` 只有 `catalog` / `none`：
+`none` 是 rbook 真实缺章，如实标注；而脚本 exit 2 是拉取失败，不能当作缺章（先跑
+`python3 .pi/skills/rbook-http/scripts/rbook.py health` 确认服务）。
 默认 `BASE_URL=https://rbook2.roj.ac.cn`（线上）。详见 `oj-reference` 命令中的复盘流程段落。
 复盘前必须先通过 `oj sample`（可选 `oj duipai`）校验 `main.cpp`，未通过则跳过复盘并提示学生先修复代码。
 

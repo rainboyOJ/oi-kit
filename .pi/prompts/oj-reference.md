@@ -55,19 +55,22 @@ Make clear that this is a reference, not a replacement for the student's own att
 ### 复盘流程
 
 1. 读取 `problem.md` 与已完成的 `main.cpp`，提取本题用到的知识点列表（如 `["数位DP", "记忆化搜索"]`）。
-2. 调用一键匹配脚本（catalog 优先 + 搜索降级，带天级缓存，自动通知使用的是缓存还是已更新）：
+2. 调用匹配脚本（在 `/api/catalog` 上加权打分 + 错字模糊兜底，每个知识点取 top-1）：
 
    ```bash
-   python .pi/skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ... --pretty
+   python3 .pi/skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ... --pretty
    ```
 
-   - 脚本内部按天缓存 catalog 到 `.pi/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时会在 stderr 提示"使用缓存……如需最新数据：删除该文件，或重新运行并加 `--no-cache` 更新缓存"。
-   - rbook 内容更新后或缓存过期时，加 `--no-cache` 强制重新拉取并刷新缓存。
-   - 每个知识点取 top-1 篇，输出形如 `{tag, title, url, score, source}`（`source` 为 `catalog` / `search` / `none`）。
-   - 缺省 `BASE_URL` 是线上 `https://rbook2.roj.ac.cn`，无需额外配置即可使用。
+   - 每个知识点**单独作为一个参数**传入，不要把两个知识点写进一个参数。
+   - 输出形如 `{tag, title, url, score, source}`；`source` 只有 `catalog` 和 `none` 两种（旧版的搜索降级已随 `/api/chunks/search` 下线而移除）。
+   - `source` 为 `none` 表示 rbook 目录里确实没有对应章节，如实在该条下注明"rbook 暂无对应章节"，不强行硬凑。
+   - **`source: none` 与拉取失败不是一回事**：catalog 拉取失败时脚本以 exit 2 报错退出，此时不能判断 rbook 是否真的没有该章节，应先确认服务可用（`python3 .pi/skills/rbook-http/scripts/rbook.py health`），不要据此写"暂无对应章节"。
+   - 命中结果可疑时加 `--explain` 看每个知识点的命中原因；阈值用 `--min-score` 调整。
+   - 缺省 `BASE_URL` 是线上 `https://rbook2.roj.ac.cn`，无需额外配置即可使用；本地有 rbook 服务时设 `RBOOK_BASE_URL` 或传 `--baseurl`。
+   - 定位到文章后，可用 `python3 .pi/skills/rbook-http/scripts/rbook.py pages --id <文章 id>` 核对内容再写复盘。
 3. 更新 `index.md`：
    - frontmatter：`tags` 填知识点名称，`rbook` 填数组，每项形如 `{tag: <知识点>, title: <文章标题>, url: <文章相对 url>}`。
    - 正文 `### 知识点` 小节：逐个知识点写一两句思想，并以 `[<文章标题>](<BASE_URL + url>)` 形式给出可点击引用。
-4. `source` 为 `none` 的知识点，如实在该条下注明"rbook 暂无对应章节"，不强行硬凑。
+4. 复盘是学习闭环的最后一环，必须真实反映 rbook 的覆盖范围：宁可写"暂无对应章节"，也不要为了好看硬凑不相关的文章。
 
 复盘是学习闭环的最后一环，必须真实反映 rbook 覆盖范围。

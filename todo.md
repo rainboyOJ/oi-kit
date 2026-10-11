@@ -2,7 +2,7 @@
 
 1. ~~**复盘前置校验**：复盘应在 `main.cpp` 通过 `sample`/`duipai` 后才跑。当前 `oj-reference` 可在 `main.cpp` 未验证时就给代码+复盘，水分大。复盘步骤前先 `oj status`/`oj sample` 校验，未通过则跳过或提示先验证。~~ ✅ 已完成（`oj-reference.md` / `oj-student-coach` SKILL.md / `AGENTS.md` 均补述前置校验）
 
-2. ~~**catalog 输出过大**：`--compact` 一次 6000+ 行 JSON，每题复盘都拉远程耗 token。可加 `rbook_match.py "<知识点>"` 工具：内部拉 catalog + 模糊打分，只返回每知识点 top-1 `{tag,title,url}`；或加本地 `.opencode/oj-tools/.cache/rbook-catalog-<date>.json` 缓存。~~ ✅ 已完成（新增 `rbook_match.py`：catalog 优先 + 搜索降级 + 天级缓存，命中缓存时 stderr 通知并给出 `--no-cache` 更新方式；`oj-reference.md` / `oj-student-coach` SKILL.md / `AGENTS.md` / `README.md` / `rbook-http` SKILL.md 均改引 `rbook_match.py`；缓存目录加入 `.gitignore`）
+2. ~~**catalog 输出过大**：`--compact` 一次 6000+ 行 JSON，每题复盘都拉远程耗 token。可加 `rbook_match.py "<知识点>"` 工具：内部拉 catalog + 模糊打分，只返回每知识点 top-1 `{tag,title,url}`；或加本地 `.pi/oj-tools/.cache/rbook-catalog-<date>.json` 缓存。~~ ✅ 已完成（新增 `rbook_match.py`：catalog 优先 + 搜索降级 + 天级缓存，命中缓存时 stderr 通知并给出 `--no-cache` 更新方式；`oj-reference.md` / `oj-student-coach` SKILL.md / `AGENTS.md` / `README.md` / `rbook-http` SKILL.md 均改引 `rbook_match.py`；缓存目录加入 `.gitignore`）
 
 3. **知识点缺校验**：AI 容易把"DFS"也塞进去但其实 rbook 没该专文、或写"状压"却没真用到。建议约束：每个知识点必须附一句"本题哪里用到该知识点"。
 
@@ -13,3 +13,5 @@
 6. **md 链接写死 BASE_URL**：复盘 md 用 `https://rbook2.roj.ac.cn/...` 固化链接，学生之后切本地 rbook 不会自动跟随。可只放相对 url 进 frontmatter `rbook`，正文引用走 Obsidian rbook 跳转；或接受"始终线上"约定。
 
 7. **`tags` 复用作知识点丢失主题维度**：复盘把 tags 填成"组合枚举""素数判定"等细粒度术语，跨题聚合"做过哪些数论题"会偏细。可考虑新增 `knowledge:` 字段单独存知识点，`tags` 留作上层主题。
+
+8. ~~**rbook 线上 API 与脚本漂移**：线上已不再提供 `/api/ai/*`，六个旧脚本全部 404。~~ ✅ 已完成：`rbook-http` skill 与 rbook 仓库同步 —— vendor 官方 canonical 客户端 `scripts/rbook.py`（commit 99e594a，sha256 814a09a5…），删除六个旧脚本，`rbook_match.py` 重写为在 `/api/catalog` 上打分 + 错字模糊兜底（每个知识点单独一个参数，软 AND；`--explain` 排查；catalog 拉取失败 exit 2 与 `source: none` 严格区分）。旧的天级缓存与搜索降级随 `/api/chunks/search` 下线一并移除（compact catalog 仅 67KB，服务端已缓存）。
