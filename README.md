@@ -1,6 +1,7 @@
-# OpenCode OJ 学习工具包
+# OI Kit：竞赛训练工具箱
 
-一套面向 OJ 题目学习（洛谷/CSP/NOIP 等）的 OpenCode 配置包。把 OpenCode 变成一个"学习教练"：引导学生按 `题意 → 暴力 → 瓶颈 → 优化 → 正解 → 样例 → 对拍 → 复盘` 的顺序解题，并在复盘阶段自动把题目用到的知识点关联到 [rbook 算法电子书](https://rbook2.roj.ac.cn) 的对应章节，沉淀到题目目录的 `index.md`。
+一套面向 OI/OJ 学习的工具包（洛谷/CSP/NOIP 等）：自包含 CLI、OpenCode 斜杠命令、
+学习教练 skill。把 OpenCode 变成一个"学习教练"：引导学生按 `题意 → 暴力 → 瓶颈 → 优化 → 正解 → 样例 → 对拍 → 复盘` 的顺序解题，并在复盘阶段自动把题目用到的知识点关联到 [rbook 算法电子书](https://rbook2.roj.ac.cn) 的对应章节，沉淀到题目目录的 `index.md`。
 
 本包自包含，可整体拷到任意 rbook 风格的项目使用，不依赖外部项目脚本。
 
@@ -54,6 +55,7 @@
 /oj-run                       编译运行 main.cpp
 /oj-sample                    跑全部样例
 /oj-duipai 100                main.cpp / brute.cpp / gen.cpp 对拍 100 组
+/oj-judge                     完整评测（走 cgroup，能判 MLE）
 /oj-review                    审查你的 main.cpp
 /oj-reference                 最后阶段：给参考正解 + 复盘知识点关联
 ```
@@ -82,9 +84,52 @@ oj sample problems/luogu/1001
 
 # 对拍（需先写好 brute.cpp 和 gen.cpp）
 oj duipai problems/luogu/1001 100
+
+# 完整评测（走 cgroup，能判 MLE；需先装 roj-local-judge-lite）
+oj judge problems/luogu/1001
 ```
 
 > 注意：`oj new luogu/P1001`（用斜杠连写）会被解析成 problem_id=`luogu/P1001`，生成 `problems/luogu/luogu/p1006` 双层目录。请用空格分隔 `oj new luogu P1001`。
+
+## 三个“跑代码”命令的分工
+
+三者不重复，按目的选：
+
+| 命令 | 用途 | 依赖 | 平台 |
+| --- | --- | --- | --- |
+| `oj run` | 单点快速跑一下，看输出/报错 | 无 | 任意 |
+| `oj sample` | 跑题目里的全部样例，比答案 | 无（纯 Python + g++） | 任意 |
+| `oj judge` | 完整验收：cgroup 计量内存、能判 MLE/TLE 边界 | `roj-local-judge-lite` | **仅 Linux** |
+
+`oj judge` 不在本仓库内实现评测，而是调用 [roj-local-judge-lite](https://github.com/rainboyOJ/roj-local-judge-lite)
+的 `judge.py`（运行时调用，不拷代码，两边各自演进）。先装好：
+
+```bash
+git clone https://github.com/rainboyOJ/roj-local-judge-lite
+cd roj-local-judge-lite && ./install.sh
+```
+
+默认在 `~/.local/share/roj-local-judge-lite/judge.py` 和 `~/mycode/roj-local-judge-lite/judge.py`
+下找；也可以显式指定（给了就用它，写错直接报错，不会静默回退）：
+
+```bash
+OI_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001
+```
+
+为什么需要它：`oj sample` 用 `timeout + subprocess`，只能判出“超时”和“答案不同”，
+**看不到真实内存用量**。内存超限（MLE）是 OI 里的常见失分点，而“瞬时申请大内存再释放”
+这种形态只有 cgroup 的 `memory.peak` 测得准。
+
+```bash
+# 完整评测，结果用 JSON（便于 AI 或脚本读）
+oj judge problems/luogu/1001 --json
+
+# 覆盖题目限制
+OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory 256
+```
+
+判定取值：`AC` `WA` `TLE` `MLE` `RE` `SE`（评测环境问题）`CE`。
+若输出里出现 `isolation: degraded`，说明 cgroup 不可用，此时 **MLE 不可信**。
 
 ## 复盘与 rbook 知识点关联
 

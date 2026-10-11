@@ -62,6 +62,49 @@ def print_json(data: Any) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def find_local_judge() -> Path | None:
+    """定位 roj-local-judge-lite 的 judge.py；找不到返回 None。
+
+    运行时调用，不拷代码：两个仓库各自演进，评测器升级后这里自动跟着变。
+    OI_KIT_JUDGE 是显式指定：给了就用它，不再回退——这样路径写错时能报错，
+    而不是静默用了另一个。未给时按“已安装 → 常见源码位置”找。
+    """
+    override = os.environ.get("OI_KIT_JUDGE")
+    if override:
+        candidate = Path(override).expanduser()
+        return candidate if candidate.is_file() else None
+    home = Path.home()
+    for candidate in (home / ".local/share/roj-local-judge-lite/judge.py",
+                      home / "mycode/roj-local-judge-lite/judge.py"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def local_judge_command(judge_py: Path, source: Path, cases: list[tuple[str, Path, Path | None]],
+                        *, time_ms: int | None, memory_mib: int | None,
+                        no_cgroup: bool, keep_work_dir: bool) -> list[str]:
+    """拼出调用 judge.py 的命令行。
+
+    有答案的测试点用 --case/--case-out 显式配对（数量必须相同），所以只挑
+    “输入 + 答案”都存在的点；只有输入的点由调用方自行处理。
+    """
+    cmd = [sys.executable, str(judge_py), str(source), "--output-format", "json"]
+    for _, inp, ans in cases:
+        cmd += ["--case", str(inp)]
+    for _, _, ans in cases:
+        cmd += ["--case-out", str(ans)]
+    if time_ms is not None:
+        cmd += ["--time", str(time_ms)]
+    if memory_mib is not None:
+        cmd += ["--memory", str(memory_mib)]
+    if no_cgroup:
+        cmd.append("--no-cgroup")
+    if keep_work_dir:
+        cmd.append("--keep-work-dir")
+    return cmd
+
+
 def shell_join(cmd: list[str]) -> str:
     return " ".join(shlex.quote(x) for x in cmd)
 
@@ -651,6 +694,66 @@ def cmd_duipai(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_judge(args: argparse.Namespace) -> int:
+    """用 roj-local-judge-lite 做完整评测（比 run/sample 多了 cgroup 内存判定）。
+
+    与 cmd_run / cmd_sample 的分工：
+      run / sample  快速单点，只要 AC/WA，不依赖 cgroup，任何平台都能跑；
+      judge         完整验收，cgroup 计量内存、能判 MLE，需要 Linux。
+
+    两者不重复：judge 只是把题目目录里的测试点交给外部评测器。
+    """
+    root = find_project_root()
+    problem_dir = infer_problem_dir(root, args.problem_dir)
+    src = problem_dir / args.source
+    if not src.is_file():
+        raise OjError(f"找不到提交文件：{src}")
+
+    cases = [(name, inp, ans) for name, inp, ans in discover_cases(problem_dir) if ans is not None]
+    if not cases:
+        raise OjError(
+            "未找到可评测的测试点：需要 in/out 配对，或 data/*.in 与 *.out 配对。"
+            "只有输入没有答案的话，用 `oj run` 或 `oj duipai`。")
+
+    judge_py = find_local_judge()
+    if judge_py is None:
+        raise OjError(
+            "未找到 judge.py。装一个："
+            "`git clone <roj-local-judge-lite> && cd roj-local-judge-lite && ./install.sh`，"
+            "或用 OI_KIT_JUDGE=/path/to/judge.py 指定。"
+            "（不想装的话，`oj sample` 能在无 cgroup 的情况下检查样例。）")
+
+    cmd = local_judge_command(
+        judge_py, src, cases,
+        time_ms=args.time, memory_mib=args.memory,
+        no_cgroup=args.no_cgroup, keep_work_dir=args.keep_work_dir,
+    )
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    # judge.py 的 stdout 是纯 JSON，stderr 是人看的进度。
+    try:
+        report = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise OjError(f"judge.py 没有返回可解析的 JSON（退出码 {proc.returncode}）：{detail}")
+
+    if args.json:
+        print_json(report)
+    else:
+        if proc.stderr:
+            print(proc.stderr, end="", file=sys.stderr)
+        verdict = report.get("verdict")
+        print(f"评测：{verdict}  通过 {report.get('passed')}/{report.get('total')}")
+        isolation = report.get("isolation") or {}
+        if isolation.get("mode") == "degraded":
+            print("  注：降级模式，内存未被计量，MLE 不可信", file=sys.stderr)
+        for case in report.get("cases") or []:
+            line = f"  {case.get('verdict'):<4} {case.get('name')}"
+            if case.get("message"):
+                line += f"   {case['message']}"
+            print(line)
+    return 0 if report.get("exit_code") == 0 else (1 if report.get("exit_code") == 1 else 2)
+
+
 def cmd_gen(args: argparse.Namespace) -> int:
     root = find_project_root()
     problem_dir = infer_problem_dir(root, args.problem_dir)
@@ -707,6 +810,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, default=2.0)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_duipai)
+
+    p = sub.add_parser("judge", help="用 roj-local-judge-lite 做完整评测（cgroup 内存判定）")
+    p.add_argument("problem_dir", nargs="?")
+    p.add_argument("--source", default="main.cpp")
+    p.add_argument("--time", type=int, help="覆盖题目时间限制（ms）")
+    p.add_argument("--memory", type=int, help="覆盖题目内存限制（MiB）")
+    p.add_argument("--no-cgroup", action="store_true",
+                   help="跳过 cgroup（MLE 将无法判定）")
+    p.add_argument("--keep-work-dir", action="store_true")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_judge)
 
     p = sub.add_parser("gen", help="创建或重置 gen.cpp 模板")
     p.add_argument("problem_dir", nargs="?")

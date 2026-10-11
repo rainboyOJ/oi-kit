@@ -12,6 +12,7 @@ Use this summary:
 /oj-run             编译运行 main.cpp
 /oj-sample          跑样例
 /oj-duipai 100      对拍 main.cpp / brute.cpp / gen.cpp
+/oj-judge           完整评测（cgroup 内存判定，需装 roj-local-judge-lite）
 /oj-review          审查学生代码
 /oj-reference       最后阶段给参考解
 ```
@@ -21,3 +22,8 @@ Explain that the intended learning order is:
 ```text
 题意 -> 暴力 -> 瓶颈 -> 优化 -> main.cpp -> 样例 -> 对拍 -> 复盘
 ```
+
+Clarify the three "run code" commands, since they are easy to confuse:
+`oj run` is a quick single input, `oj sample` checks the samples, and `oj judge` is
+the full acceptance run with cgroup memory accounting (so it can see MLE). Point out
+that `oj judge` needs `roj-local-judge-lite` and only runs on Linux.
