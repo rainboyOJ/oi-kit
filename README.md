@@ -71,9 +71,27 @@
 > 首次在项目里启动 Pi 时会询问，选信任即可（或用 `/trust` 保存决定）。`AGENTS.md` 不受此限制。
 > 改完 `.pi/prompts/` 或 `.pi/skills/` 后执行 `/reload` 即可在本会话生效。
 
+#### 全局安装（所有项目可用）
+
+本仓库本身就是一个 Pi package（`package.json` 的 `pi` 清单显式声明了 `.pi/prompts` 与
+`.pi/skills`，因为它们在点目录下，约定扫描发现不了）。安装到全局：
+
+```bash
+pi install /path/to/oi-kit      # 写入 ~/.pi/agent/settings.json，不加 --local
+pi list                         # 确认出现 ../../mycode/oi-kit
+ln -sfn /path/to/oi-kit/.pi/oj-tools/bin/oj ~/.local/bin/oj   # oj CLI 进 PATH
+```
+
+装完后 `/oj-*` 命令与三个 skill 在任何项目里都可用（个人包不需要项目信任）；
+本地包不拷贝文件，改完仓库内容 `/reload` 即生效。卸载：`pi remove /path/to/oi-kit`。
+
+> 路径约定：prompts/skills/AGENTS.md 里调 CLI 一律写 `oj`（依赖上面的 PATH 链接，
+> `bin/oj` 内部用 `readlink -f` 解析自身位置，支持 symlink 调用）；rbook 脚本写
+> `<rbook-http skill 目录>/scripts/...`，由模型按 Pi 提示的 skill 路径解析，与安装位置无关。
+
 ### 2. 在命令行直接用 CLI
 
-CLI 不依赖 Pi，可在任何终端跑（也可用 `oj` 相对路径 `.pi/oj-tools/bin/oj`）：
+CLI 不依赖 Pi，可在任何终端跑（本仓库已把 `~/.local/bin/oj` 链接到 `.pi/oj-tools/bin/oj`）：
 
 ```bash
 # 新建题目目录（注意 oj 与题号分开传，不要写 luogu/P1001）
@@ -146,10 +164,10 @@ OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory
 
 1. 前置校验：`oj status` + `oj sample`（建议 `oj duipai`）。未通过则跳过复盘并提示先修代码。
 2. 从 `problem.md` + `main.cpp` 提取知识点列表（如 `["组合枚举", "素数判定"]`）。
-3. 一键匹配：
+3. 一键匹配（`<rbook-http skill 目录>` = `rbook-http` skill 的 `SKILL.md` 所在目录）：
 
    ```bash
-   python3 .pi/skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
+   python3 <rbook-http skill 目录>/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
    ```
 
    - 每个知识点单独一个参数；在 `/api/catalog` 上加权打分（id / title / tags / description，含错字模糊兜底），每个知识点取 top-1，输出 `{tag, title, url, score, source}`。
@@ -161,14 +179,14 @@ OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory
    - 正文 `### 知识点` 小节逐个知识点写一两句思想，并附 `[<文章标题>](https://rbook2.roj.ac.cn<url>)` 可点击引用。
 5. `source` 为 `none` 时如实标注"rbook 暂无对应章节"，不硬凑。
    注意区分：**`none` 是 rbook 真的没该章节**；而脚本 exit 2 是 catalog 拉取失败（服务不可用或路由变更），
-   此时不能写"暂无对应章节"，先跑 `python3 .pi/skills/rbook-http/scripts/rbook.py health` 确认服务。
+   此时不能写"暂无对应章节"，先跑 `python3 <rbook-http skill 目录>/scripts/rbook.py health` 确认服务。
 
 rbook 默认走线上 `https://rbook2.roj.ac.cn`。本地有 rbook 服务时设 `RBOOK_BASE_URL=http://127.0.0.1:3000`
 或给脚本传 `--baseurl` 覆盖。
 
 ### rbook 客户端与 API 版本
 
-`.pi/skills/rbook-http/scripts/rbook.py` 是 rbook 仓库 `scripts/rbook.py` 的**原样 vendor**
+`<rbook-http skill 目录>/scripts/rbook.py` 是 rbook 仓库 `scripts/rbook.py` 的**原样 vendor**
 （只用 Python 标准库，不依赖 rbook 仓库存在），提供 `health` / `site` / `catalog` / `find` /
 `pages` / `codes` / `tags` 子命令；`rbook_match.py` 是本项目为复盘写的打分辅助脚本。
 

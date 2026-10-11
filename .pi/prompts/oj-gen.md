@@ -12,7 +12,7 @@ Use the `oj-cpp-rbook-style` skill.
 If `gen.cpp` is missing, create the standard template:
 
 ```bash
-.pi/oj-tools/bin/oj gen $ARGUMENTS
+oj gen $ARGUMENTS
 ```
 
 Then adapt `gen.cpp` to the current problem's input format. Keep it small-data by default so `brute.cpp` can verify it.

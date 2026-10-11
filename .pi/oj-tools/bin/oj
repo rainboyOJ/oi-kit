@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# readlink -f 解析 symlink，使 ~/.local/bin/oj 这类链接也能找到 scripts/
+SCRIPT_DIR="$(cd -- "$(dirname -- "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 exec python3 "$SCRIPT_DIR/../scripts/oj_cli.py" "$@"

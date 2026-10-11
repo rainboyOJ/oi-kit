@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.pi/oj-tools/bin/oj status $ARGUMENTS
+oj status $ARGUMENTS
 ```
 
 Explain the result in Chinese. Focus on the next concrete student action:

@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.pi/oj-tools/bin/oj judge $ARGUMENTS
+oj judge $ARGUMENTS
 ```
 
 This delegates to `roj-local-judge-lite` (installed separately). Unlike `oj sample`, it

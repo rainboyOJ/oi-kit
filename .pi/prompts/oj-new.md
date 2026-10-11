@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Use the self-contained helper:
 
 ```bash
-.pi/oj-tools/bin/oj new $ARGUMENTS
+oj new $ARGUMENTS
 ```
 
 After running it, summarize:

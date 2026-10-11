@@ -18,11 +18,7 @@ problems/<oj>/<problem_id>/
   in / out / in1 / out1
 ```
 
-Use the self-contained helper (paths below are relative to the project root):
-
-```bash
-.pi/oj-tools/bin/oj
-```
+Use the self-contained helper `oj`（已链接到 `~/.local/bin/oj`，任何项目下都能直接跑）：
 
 Do not depend on external project scripts.
 
@@ -55,8 +51,8 @@ Allowed by default:
 `oj sample` 用 `timeout + subprocess`，看不到真实内存用量，所以它能给 AC 不等于内存安全。
 
 - 从 `problem.md` + `main.cpp` 提取本题涉及的知识点列表；
-- 调 `.pi/skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ...`：在 `/api/catalog` 上加权打分（含错字模糊兜底），每个知识点取 top-1，输出 `{tag, title, url, score, source}`；`source` 只有 `catalog` / `none`；
-- **`source: none` 与拉取失败不同**：脚本 exit 2 表示 catalog 拉不到，此时不能写"rbook 暂无对应章节"，先确认服务可用（`.pi/skills/rbook-http/scripts/rbook.py health`）；
+- 调 `<rbook-http skill 目录>/scripts/rbook_match.py "知识点1" "知识点2" ...`（`<rbook-http skill 目录>` = `rbook-http` skill 的 `SKILL.md` 所在目录）：在 `/api/catalog` 上加权打分（含错字模糊兜底），每个知识点取 top-1，输出 `{tag, title, url, score, source}`；`source` 只有 `catalog` / `none`；
+- **`source: none` 与拉取失败不同**：脚本 exit 2 表示 catalog 拉不到，此时不能写"rbook 暂无对应章节"，先确认服务可用（`<rbook-http skill 目录>/scripts/rbook.py health`）；
 - 每个知识点 top-1 篇文章，不贴模板代码正文；
 - 把结果写入题目目录的 `index.md`：
   - `frontmatter.tags` 放知识点名称；

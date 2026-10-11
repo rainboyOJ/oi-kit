@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Use the self-contained helper:
 
 ```bash
-.pi/oj-tools/bin/oj fetch $ARGUMENTS
+oj fetch $ARGUMENTS
 ```
 
 Default behavior must preserve student work: existing `problem.md`, samples, code, and notes are skipped unless the user explicitly passes force flags.
@@ -18,7 +18,7 @@ Default behavior must preserve student work: existing `problem.md`, samples, cod
 After fetching, run:
 
 ```bash
-.pi/oj-tools/bin/oj status <problem_dir>
+oj status <problem_dir>
 ```
 
 Then tell the student what to do next:

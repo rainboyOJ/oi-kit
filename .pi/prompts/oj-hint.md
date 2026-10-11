@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Use the `oj-student-coach` skill. Before giving a hint, check the available context:
 
 ```bash
-.pi/oj-tools/bin/oj status $ARGUMENTS --json
+oj status $ARGUMENTS --json
 ```
 
 Then read `problem.md` and any existing student notes or code if present.

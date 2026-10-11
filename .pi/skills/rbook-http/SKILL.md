@@ -54,12 +54,13 @@ rbook 内容时才调用这里的查询流程。
 
 ### 本项目内置的统一客户端
 
-本项目自带 rbook 仓库的 canonical 客户端，从项目根目录直接运行：
+本 skill 自带 rbook 仓库的 canonical 客户端。以下命令中的 `scripts/...` 均相对
+**本 skill 目录**（即本 `SKILL.md` 所在目录）解析：
 
 ```bash
-python3 .pi/skills/rbook-http/scripts/rbook.py health
-python3 .pi/skills/rbook-http/scripts/rbook.py catalog
-python3 .pi/skills/rbook-http/scripts/rbook.py pages --id digit-dp
+python3 scripts/rbook.py health
+python3 scripts/rbook.py catalog
+python3 scripts/rbook.py pages --id digit-dp
 ```
 
 它只用 Python 标准库，不依赖 rbook 仓库存在。文件是**原样 vendor** 的，便于日后和上游
@@ -68,6 +69,9 @@ diff 再同步：
 - 上游：rbook 仓库 `scripts/rbook.py`（commit `99e594a`，sha256 `814a09a5d693a320ce5fa6339c09f13c598812a4995d45079a5d0ab5a47089fa`）；
 - 再同步：`diff` 上游文件与本文件，一致则无需改动；有差异先读上游 changelog 再决定是否覆盖；
 - 不要在本文件里加本项目专用逻辑，项目专用逻辑放 `rbook_match.py`。
+
+> 路径约定：本 skill 内出现的 `scripts/...` 一律相对本 skill 目录，与安装位置无关
+> （无论装在项目 `.pi/skills/` 还是全局包里都成立）。
 
 ### Base URL 优先级
 
@@ -92,10 +96,10 @@ ASCII 表格。
 ### 文章目录和搜索
 
 ```bash
-python3 .pi/skills/rbook-http/scripts/rbook.py catalog
-python3 .pi/skills/rbook-http/scripts/rbook.py catalog --table
-python3 .pi/skills/rbook-http/scripts/rbook.py find "动态规划 背包" --limit 10
-python3 .pi/skills/rbook-http/scripts/rbook.py find "kmp 字符串" --json
+python3 scripts/rbook.py catalog
+python3 scripts/rbook.py catalog --table
+python3 scripts/rbook.py find "动态规划 背包" --limit 10
+python3 scripts/rbook.py find "kmp 字符串" --json
 ```
 
 `catalog` 默认列为 `#`、`id`、`title`、`description`、`tags`。`find` 先读 compact catalog，
@@ -110,8 +114,8 @@ python3 .pi/skills/rbook-http/scripts/rbook.py find "kmp 字符串" --json
 ### 文章详情
 
 ```bash
-python3 .pi/skills/rbook-http/scripts/rbook.py pages --id jump-lca
-python3 .pi/skills/rbook-http/scripts/rbook.py pages --id jump-lca --json
+python3 scripts/rbook.py pages --id jump-lca
+python3 scripts/rbook.py pages --id jump-lca --json
 ```
 
 不加 `--json` 时直接输出完整 Markdown，适合阅读和继续分析。该 Markdown 保留 frontmatter，
@@ -130,9 +134,9 @@ frontMatter, headings, navTrail, markdown
 ### 代码模板
 
 ```bash
-python3 .pi/skills/rbook-http/scripts/rbook.py codes
-python3 .pi/skills/rbook-http/scripts/rbook.py codes --tag 图论 --table
-python3 .pi/skills/rbook-http/scripts/rbook.py codes --id lca-binary-lifting
+python3 scripts/rbook.py codes
+python3 scripts/rbook.py codes --tag 图论 --table
+python3 scripts/rbook.py codes --id lca-binary-lifting
 ```
 
 代码列表默认列为 `#`、`id`、`title`、`language`、`tags`。这里的 `title` **直接来自模板的
@@ -145,9 +149,9 @@ python3 .pi/skills/rbook-http/scripts/rbook.py codes --id lca-binary-lifting
 ### 标签、站点和健康状态
 
 ```bash
-python3 .pi/skills/rbook-http/scripts/rbook.py tags
-python3 .pi/skills/rbook-http/scripts/rbook.py health --json
-python3 .pi/skills/rbook-http/scripts/rbook.py site --json
+python3 scripts/rbook.py tags
+python3 scripts/rbook.py health --json
+python3 scripts/rbook.py site --json
 ```
 
 `tags` 默认列为 `#`、`type`、`tag`、`count`，`type` 是 `article` 或 `code`。`health`、`site`
@@ -167,7 +171,7 @@ python3 .pi/skills/rbook-http/scripts/rbook.py site --json
 加权打分（id / title / tags / description，含错字模糊兜底），每个知识点取 top-1：
 
 ```bash
-python3 .pi/skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
+python3 scripts/rbook_match.py "组合枚举" "素数判定" --pretty
 ```
 
 输出 JSON 数组，每项 `{tag, title, url, score, source}`：

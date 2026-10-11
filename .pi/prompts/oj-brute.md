@@ -26,5 +26,5 @@ Not allowed:
 After editing, suggest running:
 
 ```bash
-.pi/oj-tools/bin/oj sample
+oj sample
 ```

@@ -1,0 +1,8 @@
+{
+  "name": "oi-kit",
+  "keywords": ["pi-package"],
+  "pi": {
+    "prompts": ["./.pi/prompts"],
+    "skills": ["./.pi/skills"]
+  }
+}

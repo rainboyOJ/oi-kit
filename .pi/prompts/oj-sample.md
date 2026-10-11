@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.pi/oj-tools/bin/oj sample $ARGUMENTS
+oj sample $ARGUMENTS
 ```
 
 If a case fails, summarize:

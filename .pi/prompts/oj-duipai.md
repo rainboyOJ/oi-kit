@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.pi/oj-tools/bin/oj duipai $ARGUMENTS
+oj duipai $ARGUMENTS
 ```
 
 The expected three-file workflow is:
