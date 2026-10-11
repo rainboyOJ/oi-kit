@@ -1,3 +1,8 @@
+---
+description: 分层提示，只给下一步，不给完整正解
+argument-hint: "[problem_dir]"
+---
+
 Give layered hints for an OJ problem without revealing the full solution.
 
 Arguments: `$ARGUMENTS`
@@ -5,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Use the `oj-student-coach` skill. Before giving a hint, check the available context:
 
 ```bash
-.opencode/oj-tools/bin/oj status $ARGUMENTS --json
+.pi/oj-tools/bin/oj status $ARGUMENTS --json
 ```
 
 Then read `problem.md` and any existing student notes or code if present.

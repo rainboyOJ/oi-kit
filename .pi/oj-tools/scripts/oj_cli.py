@@ -2,8 +2,8 @@
 """Self-contained OJ helper for rbook-style problem directories.
 
 This tool is intentionally small and deterministic.  It is designed to live
-inside .opencode/ so it can be moved to another rbook-style project together
-with OpenCode commands and skills.
+inside .pi/ so it can be moved to another rbook-style project together
+with Pi commands and skills.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TOOLS_DIR = SCRIPT_DIR.parent
-OPENCODE_DIR = TOOLS_DIR.parent
+PI_DIR = TOOLS_DIR.parent
 TEMPLATE_DIR = TOOLS_DIR / "templates"
 
 
@@ -121,7 +121,7 @@ def find_project_root(start: Path | None = None) -> Path:
     for path in [cur, *cur.parents]:
         if (path / "problems").is_dir():
             return path
-        if (path / ".opencode").is_dir():
+        if (path / ".pi").is_dir():
             return path
     return cur
 
@@ -381,7 +381,7 @@ def discover_cases(problem_dir: Path) -> list[tuple[str, Path, Path | None]]:
 
 
 def build_dir(root: Path) -> Path:
-    path = root / ".opencode" / "oj-tools" / ".build"
+    path = root / ".pi" / "oj-tools" / ".build"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -768,7 +768,7 @@ def cmd_gen(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="oj", description="OpenCode OJ student helper")
+    parser = argparse.ArgumentParser(prog="oj", description="Pi OJ student helper")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("new", help="创建 rbook 风格题目目录")

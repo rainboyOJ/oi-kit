@@ -1,6 +1,6 @@
 ---
 name: oj-cpp-rbook-style
-description: Use when writing or reviewing C++17 OJ code for rbook-style learning projects. Enforce clear Chinese competitive-programming style: simple loops, global arrays when useful, no lambda, no structured bindings, no C++20, useful Chinese comments, readable main.cpp/brute.cpp/gen.cpp, and code that students can debug.
+description: 'Use when writing or reviewing C++17 OJ code for rbook-style learning projects. Enforce clear Chinese competitive-programming style: simple loops, global arrays when useful, no lambda, no structured bindings, no C++20, useful Chinese comments, readable main.cpp/brute.cpp/gen.cpp, and code that students can debug.'
 ---
 
 # OJ C++ rbook Style

@@ -1,3 +1,8 @@
+---
+description: 创建 rbook 风格 OJ 题目目录（oj new）
+argument-hint: "[oj] [problem_id]"
+---
+
 Create a new rbook-style OJ problem directory.
 
 Arguments: `$ARGUMENTS`
@@ -5,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Use the self-contained helper:
 
 ```bash
-.opencode/oj-tools/bin/oj new $ARGUMENTS
+.pi/oj-tools/bin/oj new $ARGUMENTS
 ```
 
 After running it, summarize:

@@ -1,3 +1,8 @@
+---
+description: 帮助写/改 gen.cpp（随机数据生成器）
+argument-hint: "[problem_dir]"
+---
+
 Help the student write or improve `gen.cpp`, the C++ random data generator.
 
 Arguments: `$ARGUMENTS`
@@ -7,7 +12,7 @@ Use the `oj-cpp-rbook-style` skill.
 If `gen.cpp` is missing, create the standard template:
 
 ```bash
-.opencode/oj-tools/bin/oj gen $ARGUMENTS
+.pi/oj-tools/bin/oj gen $ARGUMENTS
 ```
 
 Then adapt `gen.cpp` to the current problem's input format. Keep it small-data by default so `brute.cpp` can verify it.

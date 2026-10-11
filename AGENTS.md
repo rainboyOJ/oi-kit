@@ -1,6 +1,8 @@
-# OpenCode OJ Learning Rules
+# Pi OJ Learning Rules
 
-This `.opencode` package is for students learning OJ problems in rbook-style projects.
+This `.pi` package is for students learning OJ problems in rbook-style projects with Pi.
+`/oj-*` 斜杠命令来自 `.pi/prompts/`（prompt templates），三个 skill 来自 `.pi/skills/`。
+修改这些文件后在本会话执行 `/reload` 生效。
 
 ## Project Shape
 
@@ -16,17 +18,17 @@ problems/<oj>/<problem_id>/
   in / out / in1 / out1
 ```
 
-Use the self-contained helper:
+Use the self-contained helper (paths below are relative to the project root):
 
 ```bash
-.opencode/oj-tools/bin/oj
+.pi/oj-tools/bin/oj
 ```
 
 Do not depend on external project scripts.
 
 ## Learning Policy
 
-Default to learning-first help:
+Default to learning-first help (this is the same order the `/oj-*` commands guide the student through):
 
 ```text
 题意 -> 暴力 -> 瓶颈 -> 优化 -> main.cpp -> 样例 -> 对拍 -> 复盘
@@ -44,14 +46,14 @@ Allowed by default:
 
 ## Recap Stage: Knowledge and rbook References
 
-复盘闭环在 `/oj-reference` 给出参考代码后追加触发，使用 `skills/rbook-http` skill。
+复盘闭环在 `/oj-reference` 给出参考代码后追加触发，使用 `.pi/skills/rbook-http` skill。
 进入复盘前必须先 `oj sample`（有 `brute.cpp`+`gen.cpp` 时建议 `oj duipai`）校验 `main.cpp`，未通过则跳过复盘并提示学生先修复代码。
 
 需要判定内存是否超限（MLE）时，用 `oj judge`（走 cgroup，需装 roj-local-judge-lite，仅 Linux）。
 `oj sample` 用 `timeout + subprocess`，看不到真实内存用量，所以它能给 AC 不等于内存安全。
 
 - 从 `problem.md` + `main.cpp` 提取本题涉及的知识点列表；
-- 调 `skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ...`：catalog 优先 + 搜索降级 + 天级缓存，命中缓存时通知用户并给出 `--no-cache` 更新方式；
+- 调 `.pi/skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ...`：catalog 优先 + 搜索降级 + 天级缓存，命中缓存时通知用户并给出 `--no-cache` 更新方式；
 - 每个知识点 top-1 篇文章，不贴模板代码正文；
 - 把结果写入题目目录的 `index.md`：
   - `frontmatter.tags` 放知识点名称；

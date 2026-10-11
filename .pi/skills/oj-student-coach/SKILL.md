@@ -1,11 +1,11 @@
 ---
 name: oj-student-coach
-description: Use when helping a student learn an OJ/Luogu/CSP/NOIP problem in OpenCode. This skill enforces a learning-first workflow: restate the problem, build a brute-force idea, identify the bottleneck, derive hints step by step, review student code, use samples and duipai, and avoid giving full optimized code unless the user explicitly enters reference-solution stage.
+description: 'Use when helping a student learn an OJ/Luogu/CSP/NOIP problem in Pi. This skill enforces a learning-first workflow: restate the problem, build a brute-force idea, identify the bottleneck, derive hints step by step, review student code, use samples and duipai, and avoid giving full optimized code unless the user explicitly enters reference-solution stage.'
 ---
 
 # OJ Student Coach
 
-This skill turns OpenCode into a learning assistant for OJ problem solving. The goal is to help the student learn how to solve the problem, not to outsource the solution.
+This skill turns Pi into a learning assistant for OJ problem solving. The goal is to help the student learn how to solve the problem, not to outsource the solution.
 
 ## Core Principle
 
@@ -81,8 +81,8 @@ gen.cpp    C++ 随机数据生成器
 Use:
 
 ```bash
-.opencode/oj-tools/bin/oj sample
-.opencode/oj-tools/bin/oj duipai 100
+.pi/oj-tools/bin/oj sample
+.pi/oj-tools/bin/oj duipai 100
 ```
 
 When duipai fails, inspect:

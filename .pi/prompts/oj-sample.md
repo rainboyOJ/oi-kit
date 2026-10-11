@@ -1,3 +1,8 @@
+---
+description: 编译 main.cpp 并跑题目全部样例（oj sample）
+argument-hint: "[problem_dir]"
+---
+
 Compile `main.cpp` and run all samples / local data for the current problem.
 
 Arguments: `$ARGUMENTS`
@@ -5,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.opencode/oj-tools/bin/oj sample $ARGUMENTS
+.pi/oj-tools/bin/oj sample $ARGUMENTS
 ```
 
 If a case fails, summarize:

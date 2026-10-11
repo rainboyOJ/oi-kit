@@ -1,3 +1,8 @@
+---
+description: 查看当前题目的学习流程状态（oj status）
+argument-hint: "[problem_dir]"
+---
+
 Check the current OJ problem workflow status.
 
 Arguments: `$ARGUMENTS`
@@ -5,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.opencode/oj-tools/bin/oj status $ARGUMENTS
+.pi/oj-tools/bin/oj status $ARGUMENTS
 ```
 
 Explain the result in Chinese. Focus on the next concrete student action:

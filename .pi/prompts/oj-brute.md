@@ -1,3 +1,8 @@
+---
+description: 帮助写/改 brute.cpp（小数据暴力解）
+argument-hint: "[problem_dir]"
+---
+
 Help the student write or improve `brute.cpp`.
 
 Arguments: `$ARGUMENTS`
@@ -21,5 +26,5 @@ Not allowed:
 After editing, suggest running:
 
 ```bash
-.opencode/oj-tools/bin/oj sample
+.pi/oj-tools/bin/oj sample
 ```

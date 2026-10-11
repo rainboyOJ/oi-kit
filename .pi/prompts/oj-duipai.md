@@ -1,3 +1,8 @@
+---
+description: 对拍 main.cpp / brute.cpp / gen.cpp（oj duipai）
+argument-hint: "[problem_dir] [轮数]"
+---
+
 Run stress testing for `main.cpp` against `brute.cpp` using `gen.cpp`.
 
 Arguments: `$ARGUMENTS`
@@ -5,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.opencode/oj-tools/bin/oj duipai $ARGUMENTS
+.pi/oj-tools/bin/oj duipai $ARGUMENTS
 ```
 
 The expected three-file workflow is:

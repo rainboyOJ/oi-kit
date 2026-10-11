@@ -1,3 +1,8 @@
+---
+description: 完整评测，cgroup 计量内存，可判 MLE（oj judge）
+argument-hint: "[problem_dir]"
+---
+
 Judge `main.cpp` against the problem's test data with real memory accounting.
 
 Arguments: `$ARGUMENTS`
@@ -5,7 +10,7 @@ Arguments: `$ARGUMENTS`
 Run:
 
 ```bash
-.opencode/oj-tools/bin/oj judge $ARGUMENTS
+.pi/oj-tools/bin/oj judge $ARGUMENTS
 ```
 
 This delegates to `roj-local-judge-lite` (installed separately). Unlike `oj sample`, it

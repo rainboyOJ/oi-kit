@@ -1,3 +1,8 @@
+---
+description: 审查学生已写的 main.cpp，给针对性修复
+argument-hint: "[problem_dir]"
+---
+
 Review the student's existing solution code.
 
 Arguments: `$ARGUMENTS`

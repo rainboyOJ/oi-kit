@@ -1,3 +1,8 @@
+---
+description: 最终阶段：参考正解 + rbook 知识点复盘写入 index.md
+argument-hint: "[problem_dir]"
+---
+
 Provide a final reference solution only after the learning steps are complete.
 
 Arguments: `$ARGUMENTS`
@@ -30,8 +35,8 @@ Make clear that this is a reference, not a replacement for the student's own att
 复盘不得在 `main.cpp` 未经样例验证时进行，否则复盘会基于未验证的代码"吹"知识点，水分大、误导学生。流程开始前先执行：
 
 ```bash
-.opencode/oj-tools/bin/oj status <problem_dir>
-.opencode/oj-tools/bin/oj sample <problem_dir>
+.pi/oj-tools/bin/oj status <problem_dir>
+.pi/oj-tools/bin/oj sample <problem_dir>
 ```
 
 判定规则：
@@ -53,10 +58,10 @@ Make clear that this is a reference, not a replacement for the student's own att
 2. 调用一键匹配脚本（catalog 优先 + 搜索降级，带天级缓存，自动通知使用的是缓存还是已更新）：
 
    ```bash
-   python skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ... --pretty
+   python .pi/skills/rbook-http/scripts/rbook_match.py "知识点1" "知识点2" ... --pretty
    ```
 
-   - 脚本内部按天缓存 catalog 到 `.opencode/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时会在 stderr 提示"使用缓存……如需最新数据：删除该文件，或重新运行并加 `--no-cache` 更新缓存"。
+   - 脚本内部按天缓存 catalog 到 `.pi/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时会在 stderr 提示"使用缓存……如需最新数据：删除该文件，或重新运行并加 `--no-cache` 更新缓存"。
    - rbook 内容更新后或缓存过期时，加 `--no-cache` 强制重新拉取并刷新缓存。
    - 每个知识点取 top-1 篇，输出形如 `{tag, title, url, score, source}`（`source` 为 `catalog` / `search` / `none`）。
    - 缺省 `BASE_URL` 是线上 `https://rbook2.roj.ac.cn`，无需额外配置即可使用。

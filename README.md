@@ -1,7 +1,7 @@
 # OI Kit：竞赛训练工具箱
 
-一套面向 OI/OJ 学习的工具包（洛谷/CSP/NOIP 等）：自包含 CLI、OpenCode 斜杠命令、
-学习教练 skill。把 OpenCode 变成一个"学习教练"：引导学生按 `题意 → 暴力 → 瓶颈 → 优化 → 正解 → 样例 → 对拍 → 复盘` 的顺序解题，并在复盘阶段自动把题目用到的知识点关联到 [rbook 算法电子书](https://rbook2.roj.ac.cn) 的对应章节，沉淀到题目目录的 `index.md`。
+一套面向 OI/OJ 学习的工具包（洛谷/CSP/NOIP 等）：自包含 CLI、Pi 斜杠命令、
+学习教练 skill。把 Pi 变成一个"学习教练"：引导学生按 `题意 → 暴力 → 瓶颈 → 优化 → 正解 → 样例 → 对拍 → 复盘` 的顺序解题，并在复盘阶段自动把题目用到的知识点关联到 [rbook 算法电子书](https://rbook2.roj.ac.cn) 的对应章节，沉淀到题目目录的 `index.md`。
 
 本包自包含，可整体拷到任意 rbook 风格的项目使用，不依赖外部项目脚本。
 
@@ -9,17 +9,17 @@
 
 ```text
 .
-├── AGENTS.md                 # 学习政策与复盘规范（AI 行为约束）
-├── opencode.json             # OpenCode 配置
-├── commands/                 # /oj-* 斜杠命令
-├── skills/
-│   ├── oj-student-coach/      # 学习流程教练 skill
-│   ├── oj-cpp-rbook-style/   # rbook 风格 C++ 规范 skill
-│   └── rbook-http/           # rbook 知识库 HTTP 检索 skill
-├── oj-tools/
-│   ├── bin/oj                # 自包含 CLI 入口
-│   ├── scripts/oj_cli.py     # CLI 实现
-│   └── templates/            # 题目骨架模板（main/brute/gen/index）
+├── AGENTS.md                 # 学习政策与复盘规范（AI 行为约束，Pi 自动加载）
+├── .pi/
+│   ├── prompts/              # /oj-* 斜杠命令（prompt templates）
+│   ├── skills/
+│   │   ├── oj-student-coach/     # 学习流程教练 skill
+│   │   ├── oj-cpp-rbook-style/   # rbook 风格 C++ 规范 skill
+│   │   └── rbook-http/           # rbook 知识库 HTTP 检索 skill
+│   └── oj-tools/
+│       ├── bin/oj            # 自包含 CLI 入口
+│       ├── scripts/oj_cli.py # CLI 实现
+│       └── templates/        # 题目骨架模板（main/brute/gen/index）
 └── problems/<oj>/<id>/       # 学生题目工作区（gitignore，不随仓库分发）
     ├── problem.md            # 题面
     ├── index.md             # 学习索引 + 复盘（含知识点+rbook 链接）
@@ -41,9 +41,10 @@
 
 ## 快速开始
 
-### 1. 在 OpenCode 里使用（推荐）
+### 1. 在 Pi 里使用（推荐）
 
-在 OpenCode 会话里直接用斜杠命令，AI 会按 `AGENTS.md` 政策引导学生：
+在 Pi 会话里直接用斜杠命令（来自 `.pi/prompts/`），AI 会按 `AGENTS.md` 政策引导学生：
+修改 `.pi/prompts/` 或 `.pi/skills/` 后执行 `/reload` 即可在本会话生效，无需重启：
 
 ```text
 /oj-new luogu P1001          创建题目目录
@@ -60,11 +61,15 @@
 /oj-reference                 最后阶段：给参考正解 + 复盘知识点关联
 ```
 
-完整列表见 `commands/oj-help.md`。
+完整列表见 `.pi/prompts/oj-help.md`，在会话里执行 `/oj-help` 也会显示。
+
+> **首次使用需信任本项目**：`.pi/prompts` 与 `.pi/skills` 属于受项目信任保护的资源。
+> 首次在项目里启动 Pi 时会询问，选信任即可（或用 `/trust` 保存决定）。`AGENTS.md` 不受此限制。
+> 改完 `.pi/prompts/` 或 `.pi/skills/` 后执行 `/reload` 即可在本会话生效。
 
 ### 2. 在命令行直接用 CLI
 
-CLI 不依赖 OpenCode，可在任何终端跑：
+CLI 不依赖 Pi，可在任何终端跑（也可用 `oj` 相对路径 `.pi/oj-tools/bin/oj`）：
 
 ```bash
 # 新建题目目录（注意 oj 与题号分开传，不要写 luogu/P1001）
@@ -140,11 +145,11 @@ OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory
 3. 一键匹配：
 
    ```bash
-   python skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
+   python .pi/skills/rbook-http/scripts/rbook_match.py "组合枚举" "素数判定" --pretty
    ```
 
    - 内部 catalog 优先 + 搜索降级，每个知识点取 top-1 篇，输出 `{tag, title, url, score, source}`。
-   - catalog 走天级缓存 `.opencode/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时 stderr 会提示「使用缓存……如需最新数据，删除该文件或加 `--no-cache` 更新缓存」。
+   - catalog 走天级缓存 `.pi/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`，命中缓存时 stderr 会提示「使用缓存……如需最新数据，删除该文件或加 `--no-cache` 更新缓存」。
    - rbook 内容更新后或当天缓存过期时，加 `--no-cache` 强制重拉并刷新缓存。
 4. 写入题目目录的 `index.md`：
    - frontmatter `tags` 填知识点名称；
@@ -163,7 +168,7 @@ oj fetch luogu P1036
 oj sample problems/luogu/1036
 # 可选：再写 brute.cpp + gen.cpp
 oj duipai problems/luogu/1036 100
-# 在 OpenCode 里：
+# 在 Pi 里：
 #   /oj-reference        → 给参考代码 + 复盘，自动填 index.md 的 tags / rbook / 知识点 小节
 ```
 
@@ -187,8 +192,10 @@ rbook:
 - C++17、简单循环、全局数组优先；
 - 有用的中文注释；
 - 不用 lambda、结构化绑定、C++20 特性、重宏风格；
-- 详见 `skills/oj-cpp-rbook-style/SKILL.md`。
+- 详见 `skills/oj-cpp-rbook-style/SKILL.md`（即 `.pi/skills/oj-cpp-rbook-style/SKILL.md`）。
 
 ## 迁移到别的项目
 
-本包自包含：把整个目录拷到任意 rbook 风格项目即可，无需安装额外依赖（Python 脚本只用标准库）。`problems/` 目录会被 gitignore，工作产出不污染仓库。
+本包自包含：把 `.pi/` 目录与 `AGENTS.md` 拷到任意 rbook 风格项目即可，无需安装额外依赖
+（Python 脚本只用标准库；Pi 按约定目录发现资源，无需配置文件）。`problems/` 目录会被 gitignore，
+工作产出不污染仓库。完整的 agent 安装流程见 `install-pi.md`。

@@ -1,6 +1,6 @@
 ---
 name: rbook-http
-description: 使用 rbook 动态算法电子书的只读 HTTP API 检索、读取文章、获取代码模板和整理解题上下文。用户询问本算法电子书内容、需要定位文章、需要根据文章和模板代码写 OJ 题解或 C++ 代码、需要通过 HTTP 读取 rbook 内容时，应优先使用本技能。
+description: '使用 rbook 动态算法电子书的只读 HTTP API 检索、读取文章、获取代码模板和整理解题上下文。用户询问本算法电子书内容、需要定位文章、需要根据文章和模板代码写 OJ 题解或 C++ 代码、需要通过 HTTP 读取 rbook 内容时，应优先使用本技能。'
 ---
 
 # rbook HTTP 使用指南
@@ -36,13 +36,13 @@ curl "$BASE_URL/api/health"
 ### 健康检查
 
 ```bash
-python skills/rbook-http/scripts/rbook_health.py --online --pretty
+python .pi/skills/rbook-http/scripts/rbook_health.py --online --pretty
 ```
 
 ### 获取 AI 目录
 
 ```bash
-python skills/rbook-http/scripts/rbook_catalog.py --scope visible --compact --pretty
+python .pi/skills/rbook-http/scripts/rbook_catalog.py --scope visible --compact --pretty
 ```
 
 常用参数：
@@ -54,7 +54,7 @@ python skills/rbook-http/scripts/rbook_catalog.py --scope visible --compact --pr
 ### 片段搜索
 
 ```bash
-python skills/rbook-http/scripts/rbook_search.py "数位DP 状态 记忆化" --limit 8 --pretty
+python .pi/skills/rbook-http/scripts/rbook_search.py "数位DP 状态 记忆化" --limit 8 --pretty
 ```
 
 常用参数：
@@ -68,12 +68,12 @@ python skills/rbook-http/scripts/rbook_search.py "数位DP 状态 记忆化" --l
 OJ 复盘时最常用：对一个或多个知识点，catalog 优先 + 搜索降级，每个取 top-1。
 
 ```bash
-python skills/rbook-http/scripts/rbook_match.py "数位DP" "记忆化搜索" --pretty
+python .pi/skills/rbook-http/scripts/rbook_match.py "数位DP" "记忆化搜索" --pretty
 ```
 
 输出数组，每项 `{tag, title, url, score, source}`，`source` 为 `catalog` / `search` / `none`。
 
-带天级缓存到 `.opencode/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`：
+带天级缓存到 `.pi/oj-tools/.cache/rbook-catalog-visible-<YYYY-MM-DD>.json`：
 
 - 命中缓存时 stderr 提示"使用缓存……如需最新数据：删除该文件，或重新运行并加 `--no-cache` 更新缓存"。
 - rbook 内容更新后或缓存过期时，加 `--no-cache` 强制重新拉取并刷新缓存。
@@ -87,7 +87,7 @@ python skills/rbook-http/scripts/rbook_match.py "数位DP" "记忆化搜索" --p
 ### 读取文章上下文
 
 ```bash
-python skills/rbook-http/scripts/rbook_page_context.py graph/bcc/index.md --include-code --compact --pretty
+python .pi/skills/rbook-http/scripts/rbook_page_context.py graph/bcc/index.md --include-code --compact --pretty
 ```
 
 常用参数：
@@ -99,7 +99,7 @@ python skills/rbook-http/scripts/rbook_page_context.py graph/bcc/index.md --incl
 ### 读取模板代码
 
 ```bash
-python skills/rbook-http/scripts/rbook_code.py /code/graph/v-bcc.cpp --content-only
+python .pi/skills/rbook-http/scripts/rbook_code.py /code/graph/v-bcc.cpp --content-only
 ```
 
 常用参数：

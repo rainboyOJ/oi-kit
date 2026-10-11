@@ -8,7 +8,7 @@ catalog 未命中时降级到片段搜索（chunks/search）兜底，仍取 top-
      "score": <打分>, "source": "catalog" | "search" | "none"}
 
 为减少远程拉取，catalog 默认按天缓存到项目目录下
-    .opencode/oj-tools/.cache/rbook-catalog-YYYY-MM-DD.json
+    .pi/oj-tools/.cache/rbook-catalog-YYYY-MM-DD.json
 命中缓存时会在 stderr 通知用户，并给出更新方法。
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ def find_project_root(start: Path | None = None) -> Path:
     for path in [cur, *cur.parents]:
         if (path / "problems").is_dir():
             return path
-        if (path / ".opencode").is_dir():
+        if (path / ".pi").is_dir():
             return path
         if (path / "oj-tools").is_dir():
             return path
@@ -44,7 +44,7 @@ def find_project_root(start: Path | None = None) -> Path:
 
 
 def cache_path(root: Path, scope: str, date: dt.date) -> Path:
-    return root / ".opencode" / "oj-tools" / ".cache" / f"rbook-catalog-{scope}-{date.isoformat()}.json"
+    return root / ".pi" / "oj-tools" / ".cache" / f"rbook-catalog-{scope}-{date.isoformat()}.json"
 
 
 def load_cache(path: Path) -> dict[str, Any] | None:
