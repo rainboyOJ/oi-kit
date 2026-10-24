@@ -1,0 +1,643 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import hmac
+import json
+import os
+import re
+import secrets
+import sys
+import tempfile
+import threading
+import webbrowser
+from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Callable, TextIO
+from urllib.parse import parse_qs, urlencode, urlsplit
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# 从 submit_problem_sets.py 内联的三个小工具函数。本仓库只分发单题提交部分，
+# 不携带题单批量提交脚本，因此这里不再 import 上游模块。
+LUOGU_BASE_URL = "https://www.luogu.com.cn"
+
+
+def luogu_real_id(pid):
+    """Return the ID used in Luogu URLs, such as P1068 or B2002."""
+    pid = pid.strip()
+    return f"P{pid}" if pid[:1].isdigit() else pid.upper()
+
+
+def luogu_dir_id(pid):
+    """Map a Luogu ID to this repository's directory convention."""
+    real_id = luogu_real_id(pid)
+    if real_id.startswith("P"):
+        return real_id[1:].lower()
+    return real_id.lower()
+
+
+CONFIG_DIR_NAME = "luogu-submit-helper"
+CONFIG_FILE_NAME = "config.json"
+DEFAULT_TIMEOUT = 120.0
+MAX_RESULT_BODY = 8192
+VALID_PROBLEM_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*\Z", re.ASCII)
+SUPPORTED_LANGUAGES = {
+    ".py": "Python 3",
+    ".cpp": "C++20",
+    ".c": "C",
+    ".java": "Java",
+    ".js": "JavaScript",
+    ".rs": "Rust",
+    ".hs": "Haskell",
+}
+RESULT_STATUSES = {"submit_clicked", "error"}
+DEFAULT_SOURCE_BLACKLIST = frozenset({"gen.py", "gen.cpp"})
+
+
+class UserError(RuntimeError):
+    pass
+
+
+class ProtocolError(RuntimeError):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+        self.message = message
+
+
+@dataclass(frozen=True)
+class SourceCandidate:
+    path: Path
+    language: str
+
+
+@dataclass(frozen=True)
+class Settings:
+    problems_root: Path
+    source_blacklist: frozenset[str]
+
+
+@dataclass(frozen=True)
+class SubmissionTask:
+    problem_id: str
+    source_name: str
+    language: str
+    code: str
+
+    def as_payload(self) -> dict[str, str]:
+        return {
+            "problem_id": self.problem_id,
+            "source_name": self.source_name,
+            "language": self.language,
+            "code": self.code,
+        }
+
+
+@dataclass(frozen=True)
+class SubmissionResult:
+    status: str
+    message: str
+
+
+class TaskState:
+    def __init__(self, task: SubmissionTask, token: str):
+        self.task = task
+        self.token = token
+        self.phase = "pending"
+        self.result: SubmissionResult | None = None
+        self.result_event = threading.Event()
+        self._lock = threading.Lock()
+
+    def _check_token(self, token: str) -> None:
+        if not token or not hmac.compare_digest(
+            token.encode("utf-8"), self.token.encode("utf-8")
+        ):
+            raise ProtocolError(403, "无效的任务令牌")
+
+    def claim(self, token: str) -> dict[str, str]:
+        with self._lock:
+            self._check_token(token)
+            if self.phase != "pending":
+                raise ProtocolError(409, "任务已被领取")
+            self.phase = "claimed"
+            return self.task.as_payload()
+
+    def record_result(self, token: str, status: str, message: str) -> None:
+        with self._lock:
+            self._check_token(token)
+            if self.phase == "pending":
+                raise ProtocolError(409, "任务尚未领取")
+            if self.phase == "finished":
+                raise ProtocolError(409, "任务结果已提交")
+            if not isinstance(status, str) or status not in RESULT_STATUSES:
+                raise ProtocolError(400, "无效的任务状态")
+            if not isinstance(message, str) or len(message) > 2000:
+                raise ProtocolError(400, "无效的结果消息")
+            self.result = SubmissionResult(status=status, message=message)
+            self.phase = "finished"
+            self.result_event.set()
+
+
+class SubmissionHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, address: tuple[str, int], state: TaskState):
+        super().__init__(address, SubmissionRequestHandler)
+        self.task_state = state
+
+
+class SubmissionRequestHandler(BaseHTTPRequestHandler):
+    server: SubmissionHTTPServer
+
+    def log_message(self, _format: str, *_args: object) -> None:
+        return
+
+    def _send_json(self, status: int, payload: dict[str, object]) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _parsed_request(self) -> tuple[str, str]:
+        parsed = urlsplit(self.path)
+        values = parse_qs(parsed.query, keep_blank_values=True).get("token", [])
+        if len(values) != 1:
+            raise ProtocolError(403, "缺少有效的任务令牌")
+        return parsed.path, values[0]
+
+    def _send_protocol_error(self, error: ProtocolError) -> None:
+        self._send_json(error.status, {"error": error.message})
+
+    def do_GET(self) -> None:
+        try:
+            path, token = self._parsed_request()
+            if path != "/task":
+                raise ProtocolError(404, "未知路径")
+            payload = self.server.task_state.claim(token)
+            self._send_json(200, payload)
+        except ProtocolError as error:
+            self._send_protocol_error(error)
+
+    def do_POST(self) -> None:
+        try:
+            path, token = self._parsed_request()
+            if path != "/result":
+                raise ProtocolError(404, "未知路径")
+
+            raw_length = self.headers.get("Content-Length")
+            try:
+                length = int(raw_length) if raw_length is not None else -1
+            except ValueError as error:
+                raise ProtocolError(400, "无效的请求长度") from error
+            if length < 0 or length > MAX_RESULT_BODY:
+                raise ProtocolError(413, "结果请求过大")
+
+            try:
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                raise ProtocolError(400, "结果不是有效 JSON") from error
+            if not isinstance(payload, dict):
+                raise ProtocolError(400, "结果必须是 JSON 对象")
+
+            self.server.task_state.record_result(
+                token,
+                payload.get("status"),
+                payload.get("message"),
+            )
+            self._send_json(200, {"ok": True})
+        except ProtocolError as error:
+            self._send_protocol_error(error)
+
+    def _method_not_allowed(self) -> None:
+        self._send_json(405, {"error": "不支持的 HTTP 方法"})
+
+    do_DELETE = _method_not_allowed
+    do_OPTIONS = _method_not_allowed
+    do_PATCH = _method_not_allowed
+    do_PUT = _method_not_allowed
+
+
+def get_config_path(environ: dict[str, str] | None = None) -> Path:
+    environ = os.environ if environ is None else environ
+    if environ.get("XDG_CONFIG_HOME"):
+        base = Path(environ["XDG_CONFIG_HOME"]).expanduser()
+    elif environ.get("HOME"):
+        base = Path(environ["HOME"]).expanduser() / ".config"
+    else:
+        base = Path.home() / ".config"
+    return base / CONFIG_DIR_NAME / CONFIG_FILE_NAME
+
+
+def validate_problems_root(path: str | os.PathLike[str]) -> Path:
+    root = Path(path).expanduser().resolve()
+    if not root.is_dir():
+        raise UserError(f"题库根目录不存在: {root}")
+    if not (root / "luogu").is_dir():
+        raise UserError(f"题库根目录中没有 luogu/ 子目录: {root}")
+    return root
+
+
+def validate_source_blacklist(values) -> frozenset[str]:
+    if values is None:
+        values = []
+    if not isinstance(values, (list, tuple, set, frozenset)):
+        raise UserError("配置中的 source_blacklist 必须是文件名列表")
+
+    blacklist = set(DEFAULT_SOURCE_BLACKLIST)
+    for value in values:
+        if (
+            not isinstance(value, str)
+            or not value
+            or value in {".", ".."}
+            or "/" in value
+            or "\\" in value
+            or "\x00" in value
+        ):
+            raise UserError(f"黑名单项必须是直属文件名: {value!r}")
+        blacklist.add(value)
+    return frozenset(blacklist)
+
+
+def write_config(
+    problems_root: str | os.PathLike[str],
+    environ: dict[str, str] | None = None,
+    source_blacklist=None,
+) -> Path:
+    root = validate_problems_root(problems_root)
+    blacklist = validate_source_blacklist(source_blacklist)
+    path = get_config_path(environ)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{CONFIG_FILE_NAME}.",
+        suffix=".tmp",
+        dir=path.parent,
+        text=True,
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            json.dump(
+                {
+                    "problems_root": str(root),
+                    "source_blacklist": sorted(blacklist),
+                },
+                file,
+                ensure_ascii=False,
+                indent=2,
+            )
+            file.write("\n")
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return path
+
+
+def load_settings(environ: dict[str, str] | None = None) -> Settings:
+    path = get_config_path(environ)
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except FileNotFoundError as error:
+        raise UserError(
+            "尚未配置题库目录，请先运行: "
+            "luogu-submit config /path/to/problems"
+        ) from error
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise UserError(f"无法读取配置 {path}: {error}") from error
+    if not isinstance(payload, dict) or not isinstance(payload.get("problems_root"), str):
+        raise UserError(f"配置缺少有效的 problems_root: {path}")
+    return Settings(
+        problems_root=validate_problems_root(payload["problems_root"]),
+        source_blacklist=validate_source_blacklist(payload.get("source_blacklist")),
+    )
+
+
+def load_config(environ: dict[str, str] | None = None) -> Path:
+    return load_settings(environ).problems_root
+
+
+def normalize_problem_id(problem_id: str) -> str:
+    if not VALID_PROBLEM_ID.fullmatch(problem_id):
+        raise UserError(f"无效的洛谷题号: {problem_id!r}")
+    return luogu_real_id(problem_id)
+
+
+def problem_dir_candidates(luogu_root: Path, real_id: str) -> list[Path]:
+    """Return possible local directories for one Luogu ID, in preference order.
+
+    Both naming conventions are accepted: the digit-only form used by the
+    helper's own docs (``luogu/1119``) and the ``P``/``p`` prefixed form used
+    by rbook (``luogu/P1119``).
+    """
+    names = [
+        luogu_dir_id(real_id),
+        real_id,
+        real_id.lower(),
+    ]
+    candidates = []
+    for name in names:
+        directory = (luogu_root / name).resolve()
+        if directory.parent != luogu_root:
+            raise UserError("题目目录超出已配置的 luogu/ 根目录")
+        if directory not in candidates:
+            candidates.append(directory)
+    return candidates
+
+
+def resolve_problem(
+    problems_root: Path,
+    problem_id: str | None,
+    cwd: Path | None = None,
+) -> tuple[str, Path]:
+    root = problems_root.resolve()
+    luogu_root = (root / "luogu").resolve()
+    if problem_id is None:
+        current = (cwd or Path.cwd()).resolve()
+        if current.parent != luogu_root:
+            raise UserError(
+                "未提供题号时，当前目录必须是已配置题库中的 luogu/<题目目录>"
+            )
+        return normalize_problem_id(current.name), current
+
+    real_id = normalize_problem_id(problem_id)
+    candidates = problem_dir_candidates(luogu_root, real_id)
+    for directory in candidates:
+        if directory.is_dir():
+            return real_id, directory
+    raise UserError(
+        f"题目目录不存在: {real_id}，已尝试: "
+        + ", ".join(str(directory) for directory in candidates)
+    )
+
+
+def discover_sources(
+    problem_dir: Path,
+    source_blacklist=None,
+) -> list[SourceCandidate]:
+    blacklist = validate_source_blacklist(source_blacklist)
+    candidates = []
+    try:
+        paths = list(problem_dir.iterdir())
+    except OSError as error:
+        raise UserError(f"无法读取题目目录 {problem_dir}: {error}") from error
+    for path in paths:
+        if path.name in blacklist:
+            continue
+        language = SUPPORTED_LANGUAGES.get(path.suffix.lower())
+        if language and path.is_file():
+            candidates.append(SourceCandidate(path=path.resolve(), language=language))
+    candidates.sort(
+        key=lambda candidate: (
+            0 if candidate.path.stem.casefold() == "main" else 1,
+            candidate.path.name.casefold(),
+            candidate.path.name,
+        )
+    )
+    return candidates
+
+
+def choose_source(
+    candidates: list[SourceCandidate],
+    input_func: Callable[[str], str] = input,
+    output: TextIO = sys.stdout,
+) -> SourceCandidate | None:
+    if not candidates:
+        raise UserError(
+            "题目目录中没有支持的源码文件（py/cpp/c/java/js/rs/hs）"
+        )
+
+    output.write("可提交的源码:\n")
+    for index, candidate in enumerate(candidates, start=1):
+        output.write(f"  {index}. {candidate.path.name}  [{candidate.language}]\n")
+    output.flush()
+
+    while True:
+        answer = input_func("选择源码编号 [1]，输入 q 取消: ")
+        if answer == "":
+            return candidates[0]
+        if answer.casefold() == "q":
+            return None
+        try:
+            index = int(answer)
+        except ValueError:
+            output.write("请输入列表中的数字，或输入 q 取消。\n")
+            output.flush()
+            continue
+        if 1 <= index <= len(candidates):
+            return candidates[index - 1]
+        output.write("源码编号超出范围。\n")
+        output.flush()
+
+
+def confirm_submission(
+    problem_id: str,
+    candidate: SourceCandidate,
+    input_func: Callable[[str], str] = input,
+    output: TextIO = sys.stdout,
+) -> bool:
+    output.write("\n即将真实提交:\n")
+    output.write(f"  题号: {problem_id}\n")
+    output.write(f"  源码: {candidate.path}\n")
+    output.write(f"  语言: {candidate.language}\n")
+    output.flush()
+    return input_func("按 Enter 确认，输入任意内容取消: ") == ""
+
+
+def create_submission_server(
+    task: SubmissionTask,
+    token: str | None = None,
+) -> tuple[SubmissionHTTPServer, TaskState, str]:
+    actual_token = token or secrets.token_urlsafe(32)
+    state = TaskState(task, actual_token)
+    server = SubmissionHTTPServer(("127.0.0.1", 0), state)
+    return server, state, actual_token
+
+
+def build_browser_url(problem_id: str, port: int, token: str) -> str:
+    query = urlencode({"luogu-submit-port": port, "luogu-submit-token": token})
+    return f"{LUOGU_BASE_URL}/problem/{problem_id}?{query}#submit"
+
+
+def sanitize_terminal_message(message: str) -> str:
+    return "".join(character if character >= " " else " " for character in message)
+
+
+def serve_submission(
+    task: SubmissionTask,
+    timeout: float = DEFAULT_TIMEOUT,
+    browser_open: Callable[[str], bool] = webbrowser.open_new_tab,
+    output: TextIO = sys.stdout,
+) -> int:
+    try:
+        server, state, token = create_submission_server(task)
+    except OSError as error:
+        output.write(f"无法启动本地提交服务: {error}\n")
+        output.flush()
+        return 1
+    port = server.server_address[1]
+    url = build_browser_url(task.problem_id, port, token)
+    thread = threading.Thread(
+        target=server.serve_forever,
+        kwargs={"poll_interval": 0.05},
+        daemon=True,
+    )
+    thread.start()
+    try:
+        try:
+            opened = bool(browser_open(url))
+        except Exception as error:
+            opened = False
+            output.write(f"自动打开浏览器失败: {error}\n")
+        if opened:
+            output.write(f"已打开 {task.problem_id} 提交页，等待 ScriptCat userscript...\n")
+        else:
+            output.write("未能自动打开浏览器，请手动打开以下地址:\n")
+            output.write(url + "\n")
+        output.flush()
+
+        if not state.result_event.wait(timeout):
+            output.write(
+                "等待 userscript 超时。请检查 ScriptCat 脚本是否已安装、启用，"
+                "以及提交页是否正常打开。\n"
+            )
+            output.flush()
+            return 1
+
+        result = state.result
+        if result is None:
+            output.write("userscript 返回了空结果。\n")
+            output.flush()
+            return 1
+        message = sanitize_terminal_message(result.message)
+        if result.status == "submit_clicked":
+            output.write(f"已点击提交按钮: {message}\n")
+            output.flush()
+            return 0
+        output.write(f"自动提交失败: {message}\n")
+        output.flush()
+        return 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def run_single_problem(
+    problem_id: str | None,
+    environ: dict[str, str] | None = None,
+    cwd: Path | None = None,
+    input_func: Callable[[str], str] = input,
+    output: TextIO = sys.stdout,
+    browser_open: Callable[[str], bool] = webbrowser.open_new_tab,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> int:
+    settings = load_settings(environ)
+    real_id, problem_dir = resolve_problem(
+        settings.problems_root,
+        problem_id,
+        cwd=cwd,
+    )
+    candidates = discover_sources(problem_dir, settings.source_blacklist)
+    candidate = choose_source(candidates, input_func=input_func, output=output)
+    if candidate is None:
+        output.write("已取消。\n")
+        return 0
+    if not confirm_submission(real_id, candidate, input_func=input_func, output=output):
+        output.write("已取消。\n")
+        return 0
+    try:
+        code = candidate.path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise UserError(f"无法按 UTF-8 读取源码 {candidate.path}: {error}") from error
+
+    task = SubmissionTask(
+        problem_id=real_id,
+        source_name=candidate.path.name,
+        language=candidate.language,
+        code=code,
+    )
+    return serve_submission(
+        task,
+        timeout=timeout,
+        browser_open=browser_open,
+        output=output,
+    )
+
+
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="luogu-submit",
+        description="交互选择本地源码，并通过 ScriptCat 提交一个洛谷题目",
+    )
+    parser.add_argument(
+        "arguments",
+        nargs="*",
+        metavar="ARG",
+        help="题号，或 config /path/to/problems",
+    )
+    parser.add_argument(
+        "--blacklist",
+        nargs="+",
+        metavar="FILE",
+        help="配置额外排除的源码文件名，例如 --blacklist brute.py debug.cpp",
+    )
+    args = parser.parse_args(argv)
+    values = args.arguments
+    if values and values[0] == "config":
+        if len(values) != 2:
+            parser.error("配置用法: luogu-submit config /path/to/problems")
+        args.action = "config"
+        args.problems_root = values[1]
+        args.problem_id = None
+        args.source_blacklist = args.blacklist
+        return args
+    if args.blacklist is not None:
+        parser.error("--blacklist 只能与 config 命令一起使用")
+    if len(values) > 1:
+        parser.error("提交用法: luogu-submit [PROBLEM_ID]")
+    args.action = "submit"
+    args.problems_root = None
+    args.problem_id = values[0] if values else None
+    args.source_blacklist = None
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_arguments(argv)
+    try:
+        if args.action == "config":
+            path = write_config(
+                args.problems_root,
+                source_blacklist=args.source_blacklist,
+            )
+            print(f"配置已写入: {path}")
+            print(f"题库根目录: {load_config()}")
+            return 0
+        return run_single_problem(args.problem_id)
+    except UserError as error:
+        print(f"错误: {error}", file=sys.stderr)
+        return 2
+    except EOFError:
+        print("错误: 交互输入已结束，未提交。", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"错误: {error}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("\n已取消。", file=sys.stderr)
+        return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

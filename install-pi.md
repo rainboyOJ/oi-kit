@@ -57,6 +57,9 @@ DST="<目标项目的 .pi 绝对路径>"
 # 1. 建立 DST 目录结构
 mkdir -p "$DST"/oj-tools/bin "$DST"/oj-tools/scripts "$DST"/oj-tools/templates "$DST"/prompts "$DST"/skills
 
+# 1b.（可选）单题提交到洛谷的工具
+mkdir -p "$DST"/oj-tools/luogu-submit-helper/userscripts
+
 # 2. 复制白名单文件（只复制工具自身拥有的文件）
 cp "$SRC"/../AGENTS.md "$DST"/../AGENTS.md
 cp "$SRC"/../README.md "$DST"/../README.md
@@ -65,6 +68,14 @@ cp -r "$SRC"/skills/*               "$DST"/skills/
 cp "$SRC"/oj-tools/bin/oj           "$DST"/oj-tools/bin/
 cp "$SRC"/oj-tools/scripts/oj_cli.py "$DST"/oj-tools/scripts/
 cp "$SRC"/oj-tools/templates/*      "$DST"/oj-tools/templates/
+
+# 2b.（可选）单题提交工具；tests/ 不部署
+cp "$SRC"/oj-tools/luogu-submit-helper/luogu-submit "$DST"/oj-tools/luogu-submit-helper/
+cp "$SRC"/oj-tools/luogu-submit-helper/install.sh   "$DST"/oj-tools/luogu-submit-helper/
+cp "$SRC"/oj-tools/luogu-submit-helper/userscripts/*.user.js \
+   "$DST"/oj-tools/luogu-submit-helper/userscripts/
+chmod +x "$DST"/oj-tools/luogu-submit-helper/luogu-submit \
+         "$DST"/oj-tools/luogu-submit-helper/install.sh
 
 # 3. 让 oj 可执行
 chmod +x "$DST"/oj-tools/bin/oj
@@ -85,6 +96,8 @@ opencode.json          # OpenCode 遗留配置
 package.json / package-lock.json / bun.lock   # 本地插件开发产物
 .gitignore             # 源端 git 忽略规则
 oj-tools/.build/       # 构建缓存
+oj-tools/luogu-submit-helper/tests/   # 上游测试，仅开发时跑
+.pytest_cache/         # 测试缓存
 **/__pycache__/        # python 字节码缓存
 problems/              # 学生工作产出
 ```
@@ -107,6 +120,13 @@ problems/              # 学生工作产出
    ```bash
    oj --help
    ```
+
+1b. **验证单题提交工具**（可选项，纯标准库）：
+   ```bash
+   "$DST"/oj-tools/luogu-submit-helper/luogu-submit --help
+   ```
+   要真正可用还需接上两件事：运行 `install.sh` 软链到 `~/.local/bin`，以及在浏览器 ScriptCat 中
+   导入 `userscripts/luogu-submit-helper.user.js`（只装 python 那半无法提交）。
 
 2. **启动 Pi**：Pi 在启动时扫描项目资源。已运行的会话里执行 `/reload` 即可重新加载 prompts/skills/上下文文件，无需重启进程。
 

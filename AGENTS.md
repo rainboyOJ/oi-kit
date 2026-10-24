@@ -22,6 +22,11 @@ Use the self-contained helper `oj`（已链接到 `~/.local/bin/oj`，任何项�
 
 Do not depend on external project scripts.
 
+单题提交到洛谷用独立命令 `luogu-submit`（vendor 在 `.pi/oj-tools/luogu-submit-helper/`，
+同样链接在 `~/.local/bin/`）。它需要一个含 `luogu/` 的题库根目录（`luogu-submit config <root>` 一次性配置）
+以及浏览器侧 ScriptCat 油猴脚本。提交是**真实对外操作**，未经学生明确要求不要主动运行，
+也不要在未确认题号与源码的情况下运行。
+
 ## Learning Policy
 
 Default to learning-first help (this is the same order the `/oj-*` commands guide the student through):

@@ -23,7 +23,12 @@
 │   └── oj-tools/
 │       ├── bin/oj            # 自包含 CLI 入口
 │       ├── scripts/oj_cli.py # CLI 实现
-│       └── templates/        # 题目骨架模板（main/brute/gen/index）
+│       ├── templates/        # 题目骨架模板（main/brute/gen/index）
+│       └── luogu-submit-helper/  # 单题提交到洛谷（独立命令 luogu-submit）
+│           ├── luogu-submit              # 命令本体（纯标准库）
+│           ├── install.sh                # 软链到 ~/.local/bin
+│           ├── userscripts/              # ScriptCat 油猴脚本
+│           └── tests/                    # unittest/pytest
 └── problems/<oj>/<id>/       # 学生题目工作区（gitignore，不随仓库分发）
     ├── problem.md            # 题面
     ├── index.md             # 学习索引 + 复盘（含知识点+rbook 链接）
@@ -157,6 +162,52 @@ OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory
 
 判定取值：`AC` `WA` `TLE` `MLE` `RE` `SE`（评测环境问题）`CE`。
 若输出里出现 `isolation: degraded`，说明 cgroup 不可用，此时 **MLE 不可信**。
+
+## 提交到洛谷（`luogu-submit`）
+
+单题提交工具 vendor 在 `.pi/oj-tools/luogu-submit-helper/`，命令名保持独立的
+`luogu-submit`（不进 `oj` 命名空间）。它读的是**已配置的洛谷题库根目录**（含 `luogu/`），
+不读本仓库的 `problems/`，两边可以指向同一处 rbook 题库。
+
+```text
+.pi/oj-tools/luogu-submit-helper/
+├── luogu-submit                    # 命令本体（纯标准库，已内联所需工具函数）
+├── install.sh                      # 软链到 ~/.local/bin/luogu-submit
+├── userscripts/
+│   └── luogu-submit-helper.user.js # 浏览器侧 ScriptCat 脚本
+└── tests/                          # 22 passed + 12 skipped（浏览器用例需 playwright 可选）
+```
+
+工作方式：终端选源码 → 本地 127.0.0.1 随机端口起一次性 HTTP 服务并生成 token →
+打开带 `luogu-submit-port` / `luogu-submit-token` 参数的洛谷题目页 → 油猴脚本校验 token、
+填入代码、点提交。**光装 Python 那半没用，浏览器里必须装 ScriptCat 并启用该油猴脚本。**
+
+```bash
+# 1. 装命令（重复执行会覆盖软链）
+.pi/oj-tools/luogu-submit-helper/install.sh
+
+# 2. 在 ScriptCat 中导入并启用油猴脚本
+#    .pi/oj-tools/luogu-submit-helper/userscripts/luogu-submit-helper.user.js
+
+# 3. 配置洛谷题库根目录（必须包含 luogu/ 子目录）
+luogu-submit config /path/to/rbook/problems
+
+# 4. 提交（题号可写 1001 / P1001 / B2002）
+luogu-submit 1001
+# 或进入题目目录、不传题号
+cd /path/to/rbook/problems/luogu/1001 && luogu-submit
+```
+
+配置写入 `${XDG_CONFIG_HOME:-~/.config}/luogu-submit-helper/config.json`；
+`gen.py` / `gen.cpp` 默认被列为源码黑名单，可用
+`luogu-submit config <root> --blacklist brute.py debug.cpp` 追加。
+提交候选只扫题目目录直属的 `py cpp c java js rs hs`，不递归子目录。
+
+> 本仓库**只分发单题提交**。上游 `luogo-submit-helper` 仓库里的题单批量提交
+> （`submit_problem_sets.py` / `submit_problem_sets_auto.py`，后者需要 Playwright）没有搬进来。
+> 同步上游时注意：上游 `luogu-submit` 通过 `from submit_problem_sets import ...` 取
+> `LUOGU_BASE_URL` / `luogu_dir_id` / `luogu_real_id`，本仓库版本已把这三个函数内联，
+> 覆盖文件后不要丢掉这段内联，否则会 ImportError。
 
 ## 复盘与 rbook 知识点关联
 
