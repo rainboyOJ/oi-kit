@@ -70,6 +70,7 @@ cp "$SRC"/oj-tools/scripts/oj_cli.py "$DST"/oj-tools/scripts/
 cp "$SRC"/oj-tools/templates/*      "$DST"/oj-tools/templates/
 
 # 2b.（可选）单题提交工具；tests/ 不部署
+cp "$SRC"/oj-tools/luogu-submit-helper/README.md     "$DST"/oj-tools/luogu-submit-helper/
 cp "$SRC"/oj-tools/luogu-submit-helper/luogu-submit "$DST"/oj-tools/luogu-submit-helper/
 cp "$SRC"/oj-tools/luogu-submit-helper/install.sh   "$DST"/oj-tools/luogu-submit-helper/
 cp "$SRC"/oj-tools/luogu-submit-helper/userscripts/*.user.js \

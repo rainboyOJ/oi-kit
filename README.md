@@ -24,7 +24,7 @@
 │       ├── bin/oj            # 自包含 CLI 入口
 │       ├── scripts/oj_cli.py # CLI 实现
 │       ├── templates/        # 题目骨架模板（main/brute/gen/index）
-│       └── luogu-submit-helper/  # 单题提交到洛谷（独立命令 luogu-submit）
+│       └── luogu-submit-helper/  # 单题提交到洛谷（独立命令 luogu-submit，含自己的 README）
 │           ├── luogu-submit              # 命令本体（纯标准库）
 │           ├── install.sh                # 软链到 ~/.local/bin
 │           ├── userscripts/              # ScriptCat 油猴脚本
@@ -171,12 +171,17 @@ OJ_KIT_JUDGE=/path/to/judge.py oj judge problems/luogu/1001 --time 2000 --memory
 
 ```text
 .pi/oj-tools/luogu-submit-helper/
+├── README.md                       # 该组件独立安装/使用文档（可单独拷走）
 ├── luogu-submit                    # 命令本体（纯标准库，已内联所需工具函数）
 ├── install.sh                      # 软链到 ~/.local/bin/luogu-submit
 ├── userscripts/
 │   └── luogu-submit-helper.user.js # 浏览器侧 ScriptCat 脚本
-└── tests/                          # 22 passed + 12 skipped（浏览器用例需 playwright 可选）
+└── tests/                          # 22 个用例（缺 Chromium 时浏览器用例自动 skip）
 ```
+
+> 本节只给最短路径。想**不依赖 oi-kit 单独安装**这个命令（拷贝到独立目录、
+> 完整故障排查表、退出码、卸载），看
+> [`.pi/oj-tools/luogu-submit-helper/README.md`](.pi/oj-tools/luogu-submit-helper/README.md)。
 
 工作方式：终端选源码 → 本地 127.0.0.1 随机端口起一次性 HTTP 服务并生成 token →
 打开带 `luogu-submit-port` / `luogu-submit-token` 参数的洛谷题目页 → 油猴脚本校验 token、
